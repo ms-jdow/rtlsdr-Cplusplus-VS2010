@@ -60,6 +60,23 @@ int fc0013Tuner::set_gain( int gain /* tenth dB */)
 	return fc0013_set_lna_gain( gain );
 }
 
+static const int fc0013_gains[] = { -99, -73, -65, -63, -60, -58, -54, 58, 61,
+									63, 65, 67, 68, 70, 71, 179, 181, 182,
+									184, 186, 188, 191, 197 };
+
+int	fc0013Tuner::get_tuner_gains( const int **out_ptr
+								, int *out_len
+								)
+{
+	if ( !out_len )
+		return -1;
+
+	*out_len = sizeof( fc0013_gains );
+	if ( out_ptr )
+		*out_ptr = fc0013_gains;
+	return 0;
+}
+
 int fc0013Tuner::set_gain_mode( int manual )
 {
 	return set_gain_mode( manual );

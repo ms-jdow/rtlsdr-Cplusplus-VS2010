@@ -44,10 +44,11 @@ RTLSDR_API const char* rtlsdr_get_device_name(uint32_t index);
  * \param serial serial number, may be NULL
  * \return 0 on success
  */
-RTLSDR_API int rtlsdr_get_device_usb_strings(uint32_t index,
-					     char *manufact,
-					     char *product,
-					     char *serial);
+RTLSDR_API int rtlsdr_get_device_usb_strings( uint32_t index
+											, char *manufact
+											, char *product
+											, char *serial
+											);
 
 /*!
  * Get device index by USB serial string descriptor.
@@ -58,8 +59,17 @@ RTLSDR_API int rtlsdr_get_device_usb_strings(uint32_t index,
  * \return -2 if no devices were found at all
  * \return -3 if devices were found, but none with matching name
  */
-RTLSDR_API int rtlsdr_get_index_by_serial(const char *serial);
+RTLSDR_API int rtlsdr_get_index_by_serial( const char *serial );
 
+/*!
+ * rtlsdr_open Open the device for use
+ * \param index of device to be opened.
+ * \return -1 if no device found at index
+ * \return -2 if cannot open device.
+ * \return various libusb errors if cannot open device or claim interface
+ * \return various tuner init errors.
+ * \return -10 if already open.
+ */
 RTLSDR_API int rtlsdr_open(rtlsdr_dev_t **dev, uint32_t index);
 
 RTLSDR_API int rtlsdr_close(rtlsdr_dev_t *dev);
@@ -107,8 +117,11 @@ RTLSDR_API int rtlsdr_get_xtal_freq(rtlsdr_dev_t *dev, uint32_t *rtl_freq,
  * \param serial serial number, may be NULL
  * \return 0 on success
  */
-RTLSDR_API int rtlsdr_get_usb_strings(rtlsdr_dev_t *dev, char *manufact,
-				      char *product, char *serial);
+RTLSDR_API int rtlsdr_get_usb_strings( rtlsdr_dev_t *dev
+									 , char *manufact
+									 , char *product
+									 , char *serial
+									 );
 
 /*!
  * Write the device EEPROM
@@ -233,13 +246,45 @@ RTLSDR_API int rtlsdr_get_tuner_gain(rtlsdr_dev_t *dev);
  */
 RTLSDR_API int rtlsdr_set_tuner_if_gain(rtlsdr_dev_t *dev, int stage, int gain);
 
+//  ADDED_STAGE_GAIN_MATERIAL
+/*!
+ * Get a list of gains and description of the gain stages supported by the tuner.
+ * NOTE: The gains argument must be preallocated by the caller. If NULL is
+ * being given instead, the number of available gain settings will be returned.
+ *
+ * \param dev the device handle given by rtlsdr_open()
+ * \param stage the stage to get the array of gain settings. If no such
+ *   stage exists, return error
+ * \gains array to hold the different gain settings for this stage
+ *   - use NULL to get the size of the array returned by the function
+ * \param description the textual description of the respective stage
+ *   is copied into this string (description max. 256 chars)
+ *   Optional: can be NULL
+ * \return <= 0 on error, number of available (returned) gain values otherwise
+ * \def DESCRIPTION_MAXLEN description max. 256 chars
+ */
+#define DESCRIPTION_MAXLEN 256
+RTLSDR_API int rtlsdr_get_tuner_stage_gains(rtlsdr_dev_t *dev, uint8_t stage, int32_t *gains, char *description);
+
+/*!`
+ * Set the gain of a stage in the tuner
+ *
+ * \param dev the device handle given by rtlsdr_open()
+ * \param stage the stage to set gain for
+ * \param in tenths of a dB, e.g. -30 means -3.0 dB.
+ * \return <= 0 on error, 0 on success
+ */
+RTLSDR_API int rtlsdr_set_tuner_stage_gain(rtlsdr_dev_t *dev, uint8_t stage, int32_t gain);
+
 enum rtl_sdr_gain_mode {
-	GAIN_MODE_AGC=0,
-	GAIN_MODE_MANUAL=1,
-	GAIN_MODE_LINEARITY=2,
-	GAIN_MODE_SENSITIVITY=3
+	GAIN_MODE_AGC,
+	GAIN_MODE_MANUAL,
+	GAIN_MODE_LINEARITY,
+	GAIN_MODE_SENSITIVITY,
+	GAIN_MODE_COUNT			// Count of gain modes. Not a real gain mode.
 };
 
+//	/ADDED_STAGE_GAIN_MATERIAL
 
 /*!
  * Set the gain mode (automatic/manual) for the device.
@@ -398,10 +443,16 @@ RTLSDR_API int rtlsdr_read_async(rtlsdr_dev_t *dev,
  */
 RTLSDR_API int rtlsdr_cancel_async(rtlsdr_dev_t *dev);
 
-RTLSDR_API int rtlsdrjd_adjustIMRbalance( rtlsdr_dev_t *dev
-										, int reg8
-										, int reg9
-										);
+#if 1	//  ADDED_VERSION_STRING_QUERY
+/*!
+ * Return a version string
+ *
+ * \return a string in the format 1.2.3.4
+ */
+RTLSDR_API const char* rtlsdr_get_version( void );
+
+RTLSDR_API unsigned __int64 rtlsdr_get_version_int64( void );
+#endif //  ADDED_VERSION_STRING_QUERY
 
 #ifdef __cplusplus
 }

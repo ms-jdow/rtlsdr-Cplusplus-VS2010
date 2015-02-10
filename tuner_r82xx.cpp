@@ -79,7 +79,8 @@ enum r82xx_delivery_system
 };
 
 /* Those initial values start from REG_SHADOW_START */
-static const uint8_t r82xx_init_array[NUM_REGS] = {
+static const uint8_t r82xx_init_array[ NUM_REGS ] =
+{
 	0x83, 0x32, 0x75,			/* 05 to 07 */
 	0xc0, 0x40, 0xd6, 0x6c,			/* 08 to 0b */
 	0xf5, 0x63, 0x75, 0x68,			/* 0c to 0f */
@@ -90,175 +91,214 @@ static const uint8_t r82xx_init_array[NUM_REGS] = {
 };
 
 /* Tuner frequency ranges */
-static const struct r82xx_freq_range freq_ranges[] = {
+static const struct r82xx_freq_range freq_ranges[] =
+{
 	{
-	/* .freq = */		0,	/* Start freq, in MHz */
-	/* .open_d = */		0x08,	/* low */
+	/* .freq = */			0,		/* Start freq, in MHz */
+	/* .open_d = */			0x08,	/* low */
 	/* .rf_mux_ploy = */	0x02,	/* R26[7:6]=0 (LPF)  R26[1:0]=2 (low) */
-	/* .tf_c = */		0xdf,	/* R27[7:0]  band2,band0 */
+	/* .tf_c = */			0xdf,	/* R27[7:0]  band2,band0 */
 	/* .xtal_cap20p = */	0x02,	/* R16[1:0]  20pF (10)   */
 	/* .xtal_cap10p = */	0x01,
-	/* .xtal_cap0p = */	0x00,
-	}, {
-	/* .freq = */		50,	/* Start freq, in MHz */
-	/* .open_d = */		0x08,	/* low */
+	/* .xtal_cap0p = */		0x00,
+	}
+	,
+	{
+	/* .freq = */			50,		/* Start freq, in MHz */
+	/* .open_d = */			0x08,	/* low */
 	/* .rf_mux_ploy = */	0x02,	/* R26[7:6]=0 (LPF)  R26[1:0]=2 (low) */
-	/* .tf_c = */		0xbe,	/* R27[7:0]  band4,band1  */
+	/* .tf_c = */			0xbe,	/* R27[7:0]  band4,band1  */
 	/* .xtal_cap20p = */	0x02,	/* R16[1:0]  20pF (10)   */
 	/* .xtal_cap10p = */	0x01,
-	/* .xtal_cap0p = */	0x00,
+	/* .xtal_cap0p = */		0x00,
 	}, {
-	/* .freq = */		55,	/* Start freq, in MHz */
-	/* .open_d = */		0x08,	/* low */
+	/* .freq = */			55,		/* Start freq, in MHz */
+	/* .open_d = */			0x08,	/* low */
 	/* .rf_mux_ploy = */	0x02,	/* R26[7:6]=0 (LPF)  R26[1:0]=2 (low) */
-	/* .tf_c = */		0x8b,	/* R27[7:0]  band7,band4 */
+	/* .tf_c = */			0x8b,	/* R27[7:0]  band7,band4 */
 	/* .xtal_cap20p = */	0x02,	/* R16[1:0]  20pF (10)   */
 	/* .xtal_cap10p = */	0x01,
-	/* .xtal_cap0p = */	0x00,
-	}, {
-	/* .freq = */		60,	/* Start freq, in MHz */
-	/* .open_d = */		0x08,	/* low */
+	/* .xtal_cap0p = */		0x00,
+	}
+	,
+	{
+	/* .freq = */			60,		/* Start freq, in MHz */
+	/* .open_d = */			0x08,	/* low */
 	/* .rf_mux_ploy = */	0x02,	/* R26[7:6]=0 (LPF)  R26[1:0]=2 (low) */
-	/* .tf_c = */		0x7b,	/* R27[7:0]  band8,band4 */
+	/* .tf_c = */			0x7b,	/* R27[7:0]  band8,band4 */
 	/* .xtal_cap20p = */	0x02,	/* R16[1:0]  20pF (10)   */
 	/* .xtal_cap10p = */	0x01,
-	/* .xtal_cap0p = */	0x00,
-	}, {
-	/* .freq = */		65,	/* Start freq, in MHz */
-	/* .open_d = */		0x08,	/* low */
+	/* .xtal_cap0p = */		0x00,
+	}
+	,
+	{
+	/* .freq = */			65,		/* Start freq, in MHz */
+	/* .open_d = */			0x08,	/* low */
 	/* .rf_mux_ploy = */	0x02,	/* R26[7:6]=0 (LPF)  R26[1:0]=2 (low) */
-	/* .tf_c = */		0x69,	/* R27[7:0]  band9,band6 */
+	/* .tf_c = */			0x69,	/* R27[7:0]  band9,band6 */
 	/* .xtal_cap20p = */	0x02,	/* R16[1:0]  20pF (10)   */
 	/* .xtal_cap10p = */	0x01,
-	/* .xtal_cap0p = */	0x00,
-	}, {
-	/* .freq = */		70,	/* Start freq, in MHz */
-	/* .open_d = */		0x08,	/* low */
+	/* .xtal_cap0p = */		0x00,
+	}
+	,
+	{
+	/* .freq = */			70,		/* Start freq, in MHz */
+	/* .open_d = */			0x08,	/* low */
 	/* .rf_mux_ploy = */	0x02,	/* R26[7:6]=0 (LPF)  R26[1:0]=2 (low) */
-	/* .tf_c = */		0x58,	/* R27[7:0]  band10,band7 */
+	/* .tf_c = */			0x58,	/* R27[7:0]  band10,band7 */
 	/* .xtal_cap20p = */	0x02,	/* R16[1:0]  20pF (10)   */
 	/* .xtal_cap10p = */	0x01,
-	/* .xtal_cap0p = */	0x00,
-	}, {
-	/* .freq = */		75,	/* Start freq, in MHz */
-	/* .open_d = */		0x00,	/* high */
+	/* .xtal_cap0p = */		0x00,
+	}
+	,
+	{
+	/* .freq = */			75,		/* Start freq, in MHz */
+	/* .open_d = */			0x00,	/* high */
 	/* .rf_mux_ploy = */	0x02,	/* R26[7:6]=0 (LPF)  R26[1:0]=2 (low) */
-	/* .tf_c = */		0x44,	/* R27[7:0]  band11,band11 */
+	/* .tf_c = */			0x44,	/* R27[7:0]  band11,band11 */
 	/* .xtal_cap20p = */	0x02,	/* R16[1:0]  20pF (10)   */
 	/* .xtal_cap10p = */	0x01,
-	/* .xtal_cap0p = */	0x00,
-	}, {
-	/* .freq = */		80,	/* Start freq, in MHz */
-	/* .open_d = */		0x00,	/* high */
+	/* .xtal_cap0p = */		0x00,
+	}
+	,
+	{
+	/* .freq = */			80,		/* Start freq, in MHz */
+	/* .open_d = */			0x00,	/* high */
 	/* .rf_mux_ploy = */	0x02,	/* R26[7:6]=0 (LPF)  R26[1:0]=2 (low) */
-	/* .tf_c = */		0x44,	/* R27[7:0]  band11,band11 */
+	/* .tf_c = */			0x44,	/* R27[7:0]  band11,band11 */
 	/* .xtal_cap20p = */	0x02,	/* R16[1:0]  20pF (10)   */
 	/* .xtal_cap10p = */	0x01,
-	/* .xtal_cap0p = */	0x00,
-	}, {
-	/* .freq = */		90,	/* Start freq, in MHz */
-	/* .open_d = */		0x00,	/* high */
+	/* .xtal_cap0p = */		0x00,
+	}
+	,
+	{
+	/* .freq = */			90,		/* Start freq, in MHz */
+	/* .open_d = */			0x00,	/* high */
 	/* .rf_mux_ploy = */	0x02,	/* R26[7:6]=0 (LPF)  R26[1:0]=2 (low) */
-	/* .tf_c = */		0x34,	/* R27[7:0]  band12,band11 */
+	/* .tf_c = */			0x34,	/* R27[7:0]  band12,band11 */
 	/* .xtal_cap20p = */	0x01,	/* R16[1:0]  10pF (01)   */
 	/* .xtal_cap10p = */	0x01,
-	/* .xtal_cap0p = */	0x00,
-	}, {
-	/* .freq = */		100,	/* Start freq, in MHz */
-	/* .open_d = */		0x00,	/* high */
+	/* .xtal_cap0p = */		0x00,
+	}
+	,
+	{
+	/* .freq = */			100,	/* Start freq, in MHz */
+	/* .open_d = */			0x00,	/* high */
 	/* .rf_mux_ploy = */	0x02,	/* R26[7:6]=0 (LPF)  R26[1:0]=2 (low) */
-	/* .tf_c = */		0x34,	/* R27[7:0]  band12,band11 */
+	/* .tf_c = */			0x34,	/* R27[7:0]  band12,band11 */
 	/* .xtal_cap20p = */	0x01,	/* R16[1:0]  10pF (01)    */
 	/* .xtal_cap10p = */	0x01,
-	/* .xtal_cap0p = */	0x00,
-	}, {
-	/* .freq = */		110,	/* Start freq, in MHz */
-	/* .open_d = */		0x00,	/* high */
+	/* .xtal_cap0p = */		0x00,
+	}
+	,
+	{
+	/* .freq = */			110,	/* Start freq, in MHz */
+	/* .open_d = */			0x00,	/* high */
 	/* .rf_mux_ploy = */	0x02,	/* R26[7:6]=0 (LPF)  R26[1:0]=2 (low) */
-	/* .tf_c = */		0x24,	/* R27[7:0]  band13,band11 */
+	/* .tf_c = */			0x24,	/* R27[7:0]  band13,band11 */
 	/* .xtal_cap20p = */	0x01,	/* R16[1:0]  10pF (01)   */
 	/* .xtal_cap10p = */	0x01,
-	/* .xtal_cap0p = */	0x00,
-	}, {
-	/* .freq = */		120,	/* Start freq, in MHz */
-	/* .open_d = */		0x00,	/* high */
+	/* .xtal_cap0p = */		0x00,
+	}
+	,
+	{
+	/* .freq = */			120,	/* Start freq, in MHz */
+	/* .open_d = */			0x00,	/* high */
 	/* .rf_mux_ploy = */	0x02,	/* R26[7:6]=0 (LPF)  R26[1:0]=2 (low) */
-	/* .tf_c = */		0x24,	/* R27[7:0]  band13,band11 */
+	/* .tf_c = */			0x24,	/* R27[7:0]  band13,band11 */
 	/* .xtal_cap20p = */	0x01,	/* R16[1:0]  10pF (01)   */
 	/* .xtal_cap10p = */	0x01,
-	/* .xtal_cap0p = */	0x00,
-	}, {
-	/* .freq = */		140,	/* Start freq, in MHz */
-	/* .open_d = */		0x00,	/* high */
+	/* .xtal_cap0p = */		0x00,
+	}
+	,
+	{
+	/* .freq = */			140,	/* Start freq, in MHz */
+	/* .open_d = */			0x00,	/* high */
 	/* .rf_mux_ploy = */	0x02,	/* R26[7:6]=0 (LPF)  R26[1:0]=2 (low) */
-	/* .tf_c = */		0x14,	/* R27[7:0]  band14,band11 */
+	/* .tf_c = */			0x14,	/* R27[7:0]  band14,band11 */
 	/* .xtal_cap20p = */	0x01,	/* R16[1:0]  10pF (01)   */
 	/* .xtal_cap10p = */	0x01,
-	/* .xtal_cap0p = */	0x00,
-	}, {
-	/* .freq = */		180,	/* Start freq, in MHz */
-	/* .open_d = */		0x00,	/* high */
+	/* .xtal_cap0p = */		0x00,
+	}
+	,
+	{
+	/* .freq = */			180,	/* Start freq, in MHz */
+	/* .open_d = */			0x00,	/* high */
 	/* .rf_mux_ploy = */	0x02,	/* R26[7:6]=0 (LPF)  R26[1:0]=2 (low) */
-	/* .tf_c = */		0x13,	/* R27[7:0]  band14,band12 */
+	/* .tf_c = */			0x13,	/* R27[7:0]  band14,band12 */
 	/* .xtal_cap20p = */	0x00,	/* R16[1:0]  0pF (00)   */
 	/* .xtal_cap10p = */	0x00,
-	/* .xtal_cap0p = */	0x00,
-	}, {
-	/* .freq = */		220,	/* Start freq, in MHz */
-	/* .open_d = */		0x00,	/* high */
+	/* .xtal_cap0p = */		0x00,
+	}
+	,
+	{
+	/* .freq = */			220,	/* Start freq, in MHz */
+	/* .open_d = */			0x00,	/* high */
 	/* .rf_mux_ploy = */	0x02,	/* R26[7:6]=0 (LPF)  R26[1:0]=2 (low) */
-	/* .tf_c = */		0x13,	/* R27[7:0]  band14,band12 */
+	/* .tf_c = */			0x13,	/* R27[7:0]  band14,band12 */
 	/* .xtal_cap20p = */	0x00,	/* R16[1:0]  0pF (00)   */
 	/* .xtal_cap10p = */	0x00,
-	/* .xtal_cap0p = */	0x00,
-	}, {
-	/* .freq = */		250,	/* Start freq, in MHz */
-	/* .open_d = */		0x00,	/* high */
+	/* .xtal_cap0p = */		0x00,
+	}
+	,
+	{
+	/* .freq = */			250,	/* Start freq, in MHz */
+	/* .open_d = */			0x00,	/* high */
 	/* .rf_mux_ploy = */	0x02,	/* R26[7:6]=0 (LPF)  R26[1:0]=2 (low) */
-	/* .tf_c = */		0x11,	/* R27[7:0]  highest,highest */
+	/* .tf_c = */			0x11,	/* R27[7:0]  highest,highest */
 	/* .xtal_cap20p = */	0x00,	/* R16[1:0]  0pF (00)   */
 	/* .xtal_cap10p = */	0x00,
-	/* .xtal_cap0p = */	0x00,
-	}, {
-	/* .freq = */		280,	/* Start freq, in MHz */
-	/* .open_d = */		0x00,	/* high */
+	/* .xtal_cap0p = */		0x00,
+	}
+	,
+	{
+	/* .freq = */			280,	/* Start freq, in MHz */
+	/* .open_d = */			0x00,	/* high */
 	/* .rf_mux_ploy = */	0x02,	/* R26[7:6]=0 (LPF)  R26[1:0]=2 (low) */
-	/* .tf_c = */		0x00,	/* R27[7:0]  highest,highest */
+	/* .tf_c = */			0x00,	/* R27[7:0]  highest,highest */
 	/* .xtal_cap20p = */	0x00,	/* R16[1:0]  0pF (00)   */
 	/* .xtal_cap10p = */	0x00,
-	/* .xtal_cap0p = */	0x00,
-	}, {
-	/* .freq = */		310,	/* Start freq, in MHz */
-	/* .open_d = */		0x00,	/* high */
+	/* .xtal_cap0p = */		0x00,
+	}
+	,
+	{
+	/* .freq = */			310,	/* Start freq, in MHz */
+	/* .open_d = */			0x00,	/* high */
 	/* .rf_mux_ploy = */	0x41,	/* R26[7:6]=1 (bypass)  R26[1:0]=1 (middle) */
-	/* .tf_c = */		0x00,	/* R27[7:0]  highest,highest */
+	/* .tf_c = */			0x00,	/* R27[7:0]  highest,highest */
 	/* .xtal_cap20p = */	0x00,	/* R16[1:0]  0pF (00)   */
 	/* .xtal_cap10p = */	0x00,
-	/* .xtal_cap0p = */	0x00,
-	}, {
-	/* .freq = */		450,	/* Start freq, in MHz */
-	/* .open_d = */		0x00,	/* high */
+	/* .xtal_cap0p = */		0x00,
+	}
+	,
+	{
+	/* .freq = */			450,	/* Start freq, in MHz */
+	/* .open_d = */			0x00,	/* high */
 	/* .rf_mux_ploy = */	0x41,	/* R26[7:6]=1 (bypass)  R26[1:0]=1 (middle) */
-	/* .tf_c = */		0x00,	/* R27[7:0]  highest,highest */
+	/* .tf_c = */			0x00,	/* R27[7:0]  highest,highest */
 	/* .xtal_cap20p = */	0x00,	/* R16[1:0]  0pF (00)   */
 	/* .xtal_cap10p = */	0x00,
-	/* .xtal_cap0p = */	0x00,
-	}, {
-	/* .freq = */		588,	/* Start freq, in MHz */
-	/* .open_d = */		0x00,	/* high */
+	/* .xtal_cap0p = */		0x00,
+	}
+	,
+	{
+	/* .freq = */			588,	/* Start freq, in MHz */
+	/* .open_d = */			0x00,	/* high */
 	/* .rf_mux_ploy = */	0x40,	/* R26[7:6]=1 (bypass)  R26[1:0]=0 (highest) */
-	/* .tf_c = */		0x00,	/* R27[7:0]  highest,highest */
+	/* .tf_c = */			0x00,	/* R27[7:0]  highest,highest */
 	/* .xtal_cap20p = */	0x00,	/* R16[1:0]  0pF (00)   */
 	/* .xtal_cap10p = */	0x00,
-	/* .xtal_cap0p = */	0x00,
-	}, {
-	/* .freq = */		650,	/* Start freq, in MHz */
-	/* .open_d = */		0x00,	/* high */
+	/* .xtal_cap0p = */		0x00,
+	}
+	,
+	{
+	/* .freq = */			650,	/* Start freq, in MHz */
+	/* .open_d = */			0x00,	/* high */
 	/* .rf_mux_ploy = */	0x40,	/* R26[7:6]=1 (bypass)  R26[1:0]=0 (highest) */
-	/* .tf_c = */		0x00,	/* R27[7:0]  highest,highest */
+	/* .tf_c = */			0x00,	/* R27[7:0]  highest,highest */
 	/* .xtal_cap20p = */	0x00,	/* R16[1:0]  0pF (00)   */
 	/* .xtal_cap10p = */	0x00,
-	/* .xtal_cap0p = */	0x00,
+	/* .xtal_cap0p = */		0x00,
 	}
 };
 
@@ -271,12 +311,88 @@ static int r82xx_xtal_capacitor[][ 2 ] =
 	{ 0x10, XTAL_HIGH_CAP_0P },
 };
 
+//	Original gain curve
+static const int r82xx_gains[] = {   0,   9,  14,  27,  37,  77,  87, 125, 144, 157, 
+								   166, 197, 207, 229, 254, 280, 297, 328, 338, 364,
+								   372, 386, 402, 421, 434, 439, 445, 480, 496
+								 };
+
+#define SIZE_GAIN_TABLE	22
+
+static const struct gain_index_table
+{
+	uint8_t lna_gain_index[ SIZE_GAIN_TABLE ];
+	uint8_t mix_gain_index[ SIZE_GAIN_TABLE ];
+	uint8_t vga_gain_index[ SIZE_GAIN_TABLE ];
+} r82xx_gain_index_table[2] =
+{
+	{ // optimized for linearity
+		{ 15,15,13,13,12,10, 9, 9, 8, 7, 7, 6, 6, 6, 6, 5, 5, 4, 3, 3, 2, 1 }, // LNA
+		{ 12,10,10, 9, 8, 7, 6, 6, 5, 5, 5, 5, 5, 4, 4, 4, 3, 3, 3, 2, 1, 0 }, // Mixer
+		{ 13,13,12,11,11,11,11,10,10,10, 9, 9, 8, 8, 7, 7, 6, 6, 5, 4, 4, 4 }, // VGA
+	},
+	{ // optimized for sensitivty
+		{ 15,15,13,13,13,13,13,13,13,13,13,12,11,11,10, 9, 8, 7, 6, 5, 4, 3 }, // LNA
+		{ 12,12,12,12,12,12,12,12,11,11,10,10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 }, // Mixer
+		{ 13,12,12,11,10, 9, 8, 7, 6, 5, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3 }, // VGA
+	}
+};
+
+/* measured with a Racal 6103E GSM test set at 928 MHz with -60 dBm
+ * input power, for raw results see:
+ * http://steve-m.de/projects/rtl-sdr/gain_measurement/r820t/
+ */
+
+#define VGA_BASE_GAIN	-47
+static const int r82xx_vga_gain_steps[]  =		// 16 values
+{
+	0, 26, 26, 30, 42, 35, 24, 13, 14, 32, 36, 34, 35, 37, 35, 36
+};
+
+static const int r82xx_lna_gain_steps[]  =		// 16 values
+{
+	0, 9, 13, 40, 38, 13, 31, 22, 26, 31, 26, 14, 19, 5, 35, 13
+};
+
+static const int r82xx_mixer_gain_steps[]  =	// 16 values
+{
+	0, 5, 10, 10, 19, 9, 10, 25, 17, 10, 8, 16, 13, 6, 3, -8
+};
+
+static const char LNA_desc[] = "LNA";
+static const char Mixer_desc[] = "Mixer";
+static const char IF_desc[] = "IF";
+
+//    +0          +9         +22         +62
+//  +100        +113        +144        +166
+//  +192        +223        +249        +263
+//  +282        +287        +322        +335
+static int32_t LNA_stage[ ARRAY_SIZE( r82xx_lna_gain_steps )];
+//    +0          +5         +15         +25
+//   +44         +53         +63         +88
+//  +105        +115        +123        +139
+//  +152        +158        +161        +153
+static int32_t Mixer_stage[ ARRAY_SIZE( r82xx_mixer_gain_steps )];
+//   -47         -21          +5         +35
+//   +77        +112        +136        +149
+//  +163        +195        +231        +265
+//  +300        +337        +372        +408
+static int32_t IF_stage[ ARRAY_SIZE( r82xx_vga_gain_steps )];
+
+#define MAX_GAIN_TABLE_SIZE (sizeof(r82xx_lna_gain_steps)/sizeof(r82xx_lna_gain_steps[0]) +\
+	sizeof(r82xx_mixer_gain_steps)/sizeof(r82xx_mixer_gain_steps[0]))
+static int r82xx_gain_table_len;
+static int r82xx_gain_table[ MAX_GAIN_TABLE_SIZE ];
+
 
 r82xxTuner::r82xxTuner( rtlsdr* base, enum rtlsdr_tuner type )
 	: rtldev( base )
 	, m_rafael_chip( type == RTLSDR_TUNER_R828D ? CHIP_R828D : CHIP_R820T )
 	, m_i2c_addr( type == RTLSDR_TUNER_R828D ? R828D_I2C_ADDR : R820T_I2C_ADDR )
+	, gain_mode( 0 )
 {
+	r82xx_calculate_stage_gains();
+	r82xx_compute_gain_table();
 }
 
 
@@ -338,7 +454,7 @@ int r82xxTuner::set_bw( int bw /* Hz */)
 
 int r82xxTuner::set_gain( int gain /* tenth dB */)
 {
-	return r82xx_set_gain( 1, gain );
+	return r82xx_set_gain( gain );
 }
 
 int r82xxTuner::set_if_gain( int stage
@@ -348,9 +464,43 @@ int r82xxTuner::set_if_gain( int stage
 	return 0;
 }
 
+int r82xxTuner::get_tuner_stage_gains( uint8_t stage
+									 , const int32_t **gains
+									 , const char **description
+									 )
+{
+	switch( stage )
+	{
+	case 0:
+		*gains = LNA_stage;
+		*description = LNA_desc;
+		return ARRAY_SIZE( LNA_stage );
+	case 1:
+		*gains = Mixer_stage;
+		*description = Mixer_desc;
+		return ARRAY_SIZE( Mixer_stage );
+	case 2:
+		*gains = IF_stage;
+		*description = IF_desc;
+		return ARRAY_SIZE( IF_stage );
+	}
+	return 0;
+}
+
+int r82xxTuner::set_tuner_stage_gain( uint8_t stage, int32_t gain )
+{
+	if ( stage == 0 )
+		return r82xx_set_lna_gain( gain );
+	else
+	if ( stage == 1 )
+		return r82xx_set_mixer_gain( gain );
+	else
+		return r82xx_set_VGA_gain( gain );
+}
+
 int r82xxTuner::set_gain_mode( int manual )
 {
-	return r82xx_set_gain( manual, 0);
+	return r82xx_enable_manual_gain( manual );
 }
 
 int r82xxTuner::set_dither( int dither )
@@ -368,6 +518,19 @@ int	r82xxTuner::get_xtal_frequency( uint32_t& xtalfreq )
 int	r82xxTuner::set_xtal_frequency( uint32_t xtalfreq )
 {
 	m_xtal = xtalfreq;
+	return 0;
+}
+
+int	r82xxTuner::get_tuner_gains( const int **out_ptr
+							   , int *out_len
+							   )
+{
+	if ( !out_len )
+		return -1;
+
+	*out_len = r82xx_gain_table_len * sizeof( int );
+	if ( out_ptr )
+		*out_ptr = r82xx_gain_table;
 	return 0;
 }
 
@@ -658,30 +821,8 @@ int r82xxTuner::r82xx_set_pll( uint32_t freq, uint32_t *freq_out )
 	//	regardless of mix_div. Thus the tune frequencies can go as high as 1750 +
 	//	f_if or about 1756 with Oliver's code. The low end is about 21.3 Mhz
 
-#if defined( THE_DUMB_WAY )
-	if ( m_rafael_chip == CHIP_R828D )
-		vco_power_ref = 1;
-
-	/*
-	rc = r82xx_read( 0x00, data, sizeof( data ));
-	if ( rc < 0 )
-		return rc;
-	vco_fine_tune = ( data[ 4 ] & 0x30 ) >> 4;
-	*/
-	vco_fine_tune = 2;
-
-	// Possible values for vco_power_ref are 2 for r820t and 1 for r828d.
-	// vco_fine_tune is always 2 at this time.
-
-	if ( vco_fine_tune > vco_power_ref )
-		div_num = div_num - 1;				//  Only for r828d
-	else
-	if ( vco_fine_tune < vco_power_ref )	// 2 is always >= vco_power_ref
-		div_num = div_num + 1;				// Never happens
-#else
 	if ( m_rafael_chip == CHIP_R828D )
 		div_num = div_num - 1;				//  Only for r828d
-#endif
 
 	rc = r82xx_write_reg_mask( 0x10, div_num << 5, 0xe0 );
 	if ( rc < 0 )
@@ -1236,99 +1377,253 @@ int r82xxTuner::r82xx_read_gain( void )
 	if ( rc < 0 )
 		return rc;
 
+	//TODO: looks wrong... <<1 >>3?
 	return (( data[ 3 ] & 0x0f ) << 1 ) + (( data[ 3 ] & 0xf0 ) >> 4 );
 }
 
-/* measured with a Racal 6103E GSM test set at 928 MHz with -60 dBm
- * input power, for raw results see:
- * http://steve-m.de/projects/rtl-sdr/gain_measurement/r820t/
- */
-
-#define VGA_BASE_GAIN	-47
-static const int r82xx_vga_gain_steps[]  = {
-	0, 26, 26, 30, 42, 35, 24, 13, 14, 32, 36, 34, 35, 37, 35, 36
-};
-
-static const int r82xx_lna_gain_steps[]  = {
-	0, 9, 13, 40, 38, 13, 31, 22, 26, 31, 26, 14, 19, 5, 35, 13
-};
-
-static const int r82xx_mixer_gain_steps[]  = {
-	0, 5, 10, 10, 19, 9, 10, 25, 17, 10, 8, 16, 13, 6, 3, -8
-};
-
-int r82xxTuner::r82xx_set_gain( int set_manual_gain, int gain )
+int r82xxTuner::r82xx_set_gain( int gain )
 {
 	int rc;
 
-	if ( set_manual_gain )
+	if ( gain_mode )
 	{
-		int i, total_gain = 0;
+		int i;
+		int total_gain = 0;
 		uint8_t mix_index = 0;
 		uint8_t lna_index = 0;
+		uint8_t vga_index = 0;
 		uint8_t data[ 4 ];
-
-		/* LNA auto off */
-		rc = r82xx_write_reg_mask( 0x05, 0x10, 0x10 );
-		if ( rc < 0 )
-			return rc;
-
-		 /* Mixer auto off */
-		rc = r82xx_write_reg_mask( 0x07, 0, 0x10 );
-		if ( rc < 0 )
-			return rc;
 
 		rc = r82xx_read( 0x00, data, sizeof( data ));
 		if ( rc < 0 )
 			return rc;
 
-		/* set fixed VGA gain for now (16.3 dB) */
-		rc = r82xx_write_reg_mask( 0x0c, 0x08, 0x9f );
-		if ( rc < 0 )
-			return rc;
-
-		for ( i = 0; i < 15; i++ )
+		switch ( gain_mode )
 		{
-			if ( total_gain >= gain )
+		case GAIN_MODE_MANUAL: /* original algorithm */
+			/* set fixed VGA gain for now (16.3 dB) */
+			vga_index = 0x08;
+
+			for ( i = 0; i < 15; i++ )
+			{
+				if ( total_gain >= gain )
+					break;
+
+				total_gain += r82xx_lna_gain_steps[ ++lna_index ];
+
+				if ( total_gain >= gain )
+					break;
+
+				total_gain += r82xx_mixer_gain_steps[ ++mix_index ];
+			}
+			break;
+		case GAIN_MODE_LINEARITY:
+		case GAIN_MODE_SENSITIVITY:
+			{
+				const struct gain_index_table *t;
+				t = &r82xx_gain_index_table[ gain_mode == GAIN_MODE_LINEARITY ? 0 : 1 ];
+
+				for ( i = r82xx_gain_table_len - 1; i >= 0; i-- )
+					if ( gain >= r82xx_gain_table[ i ])
+						break;
+
+				lna_index = t->lna_gain_index[ SIZE_GAIN_TABLE - i - 1 ];
+				mix_index = t->mix_gain_index[ SIZE_GAIN_TABLE - i - 1 ];
+				vga_index = t->vga_gain_index[ SIZE_GAIN_TABLE - i - 1 ];
 				break;
-
-			total_gain += r82xx_lna_gain_steps[ ++lna_index ];
-
-			if ( total_gain >= gain )
-				break;
-
-			total_gain += r82xx_mixer_gain_steps[ ++mix_index ];
+			}
 		}
+		/* set VGA gain */
+		rc = r82xx_write_reg_mask( 0x0c, vga_index, 0x9f );
+		if (rc < 0)
+			return rc;
 
 		/* set LNA gain */
 		rc = r82xx_write_reg_mask( 0x05, lna_index, 0x0f );
-		if ( rc < 0 )
+		if (rc < 0)
 			return rc;
 
 		/* set Mixer gain */
 		rc = r82xx_write_reg_mask( 0x07, mix_index, 0x0f );
-		if ( rc < 0 )
-			return rc;
-	}
-	else
-	{
-		/* LNA */
-		rc = r82xx_write_reg_mask( 0x05, 0, 0x10 );
-		if ( rc < 0 )
-			return rc;
-
-		/* Mixer */
-		rc = r82xx_write_reg_mask( 0x07, 0x10, 0x10 );
-		if ( rc < 0 )
-			return rc;
-
-		/* set fixed VGA gain for now (26.5 dB) */
-		rc = r82xx_write_reg_mask( 0x0c, 0x0b, 0x9f );
-		if ( rc < 0 )
+		if (rc < 0)
 			return rc;
 	}
 
 	return 0;
+}
+
+int r82xxTuner::r82xx_enable_manual_gain( uint8_t in_gain_mode )
+{
+	int rc;
+	uint8_t data[4];
+
+	if ( in_gain_mode > GAIN_MODE_COUNT )
+		in_gain_mode = GAIN_MODE_COUNT;
+
+	if ( gain_mode != in_gain_mode )
+	{
+		rc = r82xx_read( 0x00, data, sizeof( data ));
+		if ( rc < 0 )
+			return rc;
+
+		if ( in_gain_mode )
+		{
+			/* LNA auto off */
+			rc = r82xx_write_reg_mask( 0x05, 0x10, 0x10 );
+			if ( rc < 0 )
+				return rc;
+
+			 /* Mixer auto off */
+			rc = r82xx_write_reg_mask( 0x07, 0, 0x10 );
+			if ( rc < 0 )
+				return rc;
+
+		}
+		else
+		{
+			/* LNA */
+			rc = r82xx_write_reg_mask( 0x05, 0, 0x10 );
+			if ( rc < 0 )
+				return rc;
+
+			/* Mixer */
+			rc = r82xx_write_reg_mask( 0x07, 0x10, 0x10 );
+			if ( rc < 0 )
+				return rc;
+
+			/* set fixed VGA gain for now (26.5 dB) */
+			rc = r82xx_write_reg_mask( 0x0c, 0x0b, 0x9f );
+			if ( rc < 0 )
+				return rc;
+		}
+		rc = r82xx_read( 0x00, data, sizeof( data) );
+		if ( rc < 0 )
+			return rc;
+
+		gain_mode = in_gain_mode;
+		r82xx_compute_gain_table();
+	}
+
+	return 0;
+}
+
+void r82xxTuner::r82xx_calculate_stage_gains(void)
+{
+		int i;
+		LNA_stage[ 0 ] = r82xx_lna_gain_steps[ 0 ];
+		for ( i = 1; i < ARRAY_SIZE( r82xx_lna_gain_steps ); i++ )
+			LNA_stage[ i ] = LNA_stage[ i - 1 ] + r82xx_lna_gain_steps[ i ];
+
+		Mixer_stage[ 0 ] = r82xx_mixer_gain_steps[ 0 ];
+		for ( i = 1; i < ARRAY_SIZE( r82xx_mixer_gain_steps ); i++ )
+			Mixer_stage[ i ] = Mixer_stage[ i - 1 ] + r82xx_mixer_gain_steps[ i ];
+
+		IF_stage[ 0 ] = VGA_BASE_GAIN;
+		for ( i = 1; i < ARRAY_SIZE( r82xx_vga_gain_steps ); i++ )
+			IF_stage[ i ] = IF_stage[ i - 1 ] + r82xx_vga_gain_steps[ i ];
+}
+
+void r82xxTuner::r82xx_compute_gain_table( void )
+{
+	switch ( gain_mode )
+	{
+		case GAIN_MODE_AGC: 
+		case GAIN_MODE_MANUAL: 
+		{
+			int lna_index = 0;
+			int mixer_index = 0;
+			int len = 0;
+			for ( int i = 0; i < 15; i++ )
+			{
+				r82xx_gain_table[ len++ ] = LNA_stage[ lna_index++ ] + Mixer_stage[ mixer_index ];
+				r82xx_gain_table[ len++ ] = LNA_stage[ lna_index ] + Mixer_stage[ mixer_index++ ];
+			}
+			r82xx_gain_table_len = len;
+			break;
+		}
+		case GAIN_MODE_LINEARITY:
+		case GAIN_MODE_SENSITIVITY: 
+		{
+			const struct gain_index_table *t;
+			t = &r82xx_gain_index_table[ gain_mode == GAIN_MODE_LINEARITY ? 0 : 1 ];
+			for ( int i = 0; i < SIZE_GAIN_TABLE; i++ )
+			{
+				r82xx_gain_table[ i ] = -163 // normalize to same VGA gain as GAIN_MODE_MANUAL
+						+ LNA_stage[ t->lna_gain_index[ SIZE_GAIN_TABLE - i - 1 ]]
+						+ Mixer_stage[ t->mix_gain_index[ SIZE_GAIN_TABLE - i - 1 ]]
+						+ IF_stage[ t->vga_gain_index[ SIZE_GAIN_TABLE - i - 1 ]];
+			}
+			r82xx_gain_table_len = SIZE_GAIN_TABLE;
+			break;
+		}
+	}
+}
+
+int r82xxTuner::r82xx_set_lna_gain( int32_t gain )
+{
+	uint32_t lna_index;
+	for ( lna_index = 0; lna_index < ARRAY_SIZE( LNA_stage ); ++lna_index )
+	{
+		if ( LNA_stage[ lna_index ] == gain )
+		{
+			int rc;
+			uint8_t data[ 4 ];
+			rc = r82xx_read( 0x00, data, sizeof( data ));
+			if ( rc < 0 )
+				return rc;
+			/* set LNA gain */
+			rc = r82xx_write_reg_mask( 0x05, lna_index, 0x0f );
+			if ( rc < 0 )
+				return rc;
+			return 0;
+		}
+	}
+	return -EINVAL;
+}
+
+int r82xxTuner::r82xx_set_mixer_gain( int32_t gain )
+{
+	uint32_t mixer_index;
+	for ( mixer_index = 0; mixer_index < ARRAY_SIZE( Mixer_stage ); ++mixer_index )
+	{
+		if ( Mixer_stage[ mixer_index ] == gain )
+		{
+			uint8_t data[ 4 ];
+			int rc;
+			rc = r82xx_read( 0x00, data, sizeof( data ));
+			if ( rc < 0 )
+				return rc;
+
+			/* set Mixer gain */
+			rc = r82xx_write_reg_mask( 0x07, mixer_index, 0x0f );
+			if ( rc < 0 )
+				return rc;
+			return 0;
+		}
+	}
+	return -EINVAL;
+}
+
+int r82xxTuner::r82xx_set_VGA_gain( int32_t gain )
+{
+	uint32_t IF_index;
+	for( IF_index = 0; IF_index < ARRAY_SIZE( IF_stage ); IF_index++ )
+	{
+		if ( IF_stage[ IF_index ] == gain )
+		{
+			uint8_t data[ 4 ];
+			int rc;
+			rc = r82xx_read( 0x00, data, sizeof( data ));
+			if ( rc < 0 )
+				return rc;
+			/* set VGA gain */
+			rc = r82xx_write_reg_mask( 0x0c, IF_index, 0x9f ); // TODO 0x0F or 0x9F?
+			if ( rc < 0 )
+				return rc;
+			return 0;
+		}
+	}
+	return -EINVAL;
 }
 
 int r82xxTuner::r82xx_set_freq( uint32_t freq, uint32_t *lo_freq_out )

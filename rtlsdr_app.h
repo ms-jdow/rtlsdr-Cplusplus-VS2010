@@ -9,7 +9,9 @@
 
 #include "resource.h"		// main symbols
 
-//#define THEAPP	// If MFC dialogs are ever used anywhere this must be set.
+//#define THEAPP	//	If MFC dialogs are ever used anywhere this must be set.
+				//	This is also a handy way to get this module version. But
+				//	I am not sure I need it.
 
 // CRTLDirectApp
 // See RTL Direct.cpp for the implementation of this class
@@ -27,6 +29,7 @@ public:
 	rtlsdr*		GetSdrDongle			( void );
 	void		CloseSdrDongle			( rtlsdr* dongle );
 	rtlsdr*		FindDongleByDeviceIndex	( int index );
+	LPCTSTR		GetVersionString		( void ) { return VersionString; }
 
 // Overrides
 public:
@@ -34,6 +37,8 @@ public:
 	virtual BOOL ExitInstance();
 
 	DECLARE_MESSAGE_MAP()
+
+	static CString	VersionString;
 
 protected:
 };

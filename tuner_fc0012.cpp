@@ -59,6 +59,21 @@ int fc0012Tuner::set_gain( int gain /* tenth dB */)
 	return fc0012_set_gain( gain );
 }
 
+static const int fc0012_gains[] = { -99, -40, 71, 179, 192 };
+
+int	fc0012Tuner::get_tuner_gains( const int **out_ptr
+								, int *out_len
+								)
+{
+	if ( !out_len )
+		return -1;
+
+	*out_len = sizeof( fc0012_gains );
+	if ( out_ptr )
+		*out_ptr = fc0012_gains;
+	return 0;
+}
+
 int set_dither( int dither );
 
 int	fc0012Tuner::get_xtal_frequency( uint32_t& xtalfreq )

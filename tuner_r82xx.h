@@ -87,11 +87,21 @@ public:
 	virtual int set_if_gain				( int stage
 										, int gain /* tenth dB */
 										);
+	virtual int get_tuner_stage_gains	( uint8_t stage
+										, const int32_t **gains
+										, const char **description
+										);
+	virtual int set_tuner_stage_gain	( uint8_t stage
+										, int32_t gain
+										);
 	virtual int set_gain_mode			( int manual );
 	virtual int set_dither				( int dither );
 
 	virtual int	get_xtal_frequency		( uint32_t& xtalfreq );
 	virtual int	set_xtal_frequency		( uint32_t xtalfreq );
+	virtual int	get_tuner_gains			( const int **ptr
+										, int *len
+										);
 
 protected:
 	void		ClearVars				( void );
@@ -133,9 +143,7 @@ protected:
 	int			update_if_filter		( void );
 	int			r82xx_set_bw			( uint32_t bw );
 	int			r82xx_read_gain			( void );
-	int			r82xx_set_gain			( int set_manual_gain
-										, int gain 
-										);
+	int			r82xx_set_gain			( int gain );
 	int			r82xx_set_freq			( uint32_t freq
 										, uint32_t *lo_freq_out
 										);
@@ -145,7 +153,26 @@ protected:
 	int			r82xx_set_nomod			( void );
 	int			r82xx_set_dither		( int dither );
 
+	int			r82xx_enable_manual_gain( uint8_t manual);
+	int			r82xx_get_tuner_gains	( const int **ptr
+										, int *len
+										);
 
+	int			r82xx_get_tuner_stage_gains
+										( uint8_t stage
+										, const int32_t **gains
+										, const char **description
+										);
+	int			r82xx_set_tuner_stage_gain
+										( uint8_t stage
+										, int32_t gain
+										);
+	void		r82xx_calculate_stage_gains
+										( void );
+	void		r82xx_compute_gain_table( void );
+	int			r82xx_set_lna_gain		( int32_t gain );
+	int			r82xx_set_mixer_gain	( int32_t gain );
+	int			r82xx_set_VGA_gain		( int32_t gain );
 
 protected:	//	config variables
 	uint8_t				m_i2c_addr;
@@ -181,6 +208,9 @@ protected:	//	private variables
 	/* current PLL limits */
 	uint32_t			m_pll_low_limit;
 	uint32_t			m_pll_high_limit;
+
+	//	Stage gains
+	int					gain_mode;
 
 	rtlsdr*				rtldev;
 };

@@ -25,12 +25,12 @@ public:
 	void operator += ( const Return& r )
 	{
 		memcpy( manfIdStr, r.manfIdStr, 3 * sizeof( manfIdStr ));
-//		unusedb       = r.unusedb;
-		mid           = r.mid;
+		vid           = r.vid;
 		pid           = r.pid;
-		iManufacturer = r.iManufacturer;
-		iProduct	  = r.iProduct;
-		iSerialNumber = r.iSerialNumber;
+		NotNeeded     = r.NotNeeded;
+		busy          = r.busy;
+		found         = r.found;
+		Spare         = r.Spare;
 		tunerType	  = r.tunerType;
 	}
 
@@ -39,14 +39,14 @@ public:
 	//	Make sure these are all null terminated.
 	BYTE    manfIdStr[ 256 ];			//	Null terminated Manufacturer ID string
 	BYTE	prodIdStr[ 256 ];			//	Null terminated Product ID string
-	BYTE	sernIdStr[ 256 ];				//	Null terminated Serial Number ID string
-	WORD	mid;						//	Manufacturer ID word
+	BYTE	sernIdStr[ 256 ];			//	Null terminated Serial Number ID string
+	WORD	vid;						//	Vendor ID word
 	WORD	pid;						//	Product ID word.
 	BYTE	usbpath[ MAX_USB_PATH ];	//	Stores USB path through hubs to device
-	BYTE	devindex;					//	LibUsb index for this device.
-	BYTE	iManufacturer;				//	Index of manufacturer string
-	BYTE	iProduct;					//	Index of product string
-	BYTE	iSerialNumber;				//	Index of serial number string
+	BYTE	NotNeeded;					//	LibUsb index for this device.
+	BYTE	busy;						//	Maintain file format.
+	BYTE	found;
+	BYTE	Spare;
 	BYTE	tunerType;					//	Type of tuner per enum rtlsdr_tuner
 };
 
@@ -56,10 +56,22 @@ public:
 	Dongle()
 	{
 		busy     = false;
-		devindex = 0;
-		mid      = 0;
+		vid      = 0;
 		pid      = 0;
 		found    = false;
+	}
+
+	void Clear( void )
+	{
+		busy	      = 0;
+		vid		      = 0;
+		pid		      = 0;
+		tunerType     = 0;
+		found         = -1;
+		manfIdCStr.Empty();
+		prodIdCStr.Empty();
+		sernIdCStr.Empty();
+		memset( usbpath, 0, sizeof( usbpath ));
 	}
 
 	Dongle( const Dongle& d )
@@ -74,13 +86,10 @@ public:
 
 	void operator = ( const Return& r )
 	{
-		devindex      = r.devindex;
-		busy	      = 0;				// Determined other ways.
-		mid		      = r.mid;
+		busy	      = r.busy != 0;	// Determined other ways.
+		found         = r.found;
+		vid		      = r.vid;
 		pid		      = r.pid;
-		iManufacturer = r.iManufacturer;
-		iProduct	  = r.iProduct;
-		iSerialNumber = r.iSerialNumber;
 		tunerType     = r.tunerType;
 		found         = -1;
 		manfIdCStr    = r.manfIdStr;
@@ -96,7 +105,7 @@ public:
 			//	Make a best guess. If it's in the same slot it's the same thing.
 			//	This is the best guess I can make.
 			return ( memcmp( &usbpath, &d.usbpath, sizeof( usbpath )) == 0 )
-				&& ( mid      == d.mid )
+				&& ( vid      == d.vid )
 				&& ( pid      == d.pid )
 				;
 		}
@@ -105,32 +114,24 @@ public:
 			return ( manfIdCStr  == d.manfIdCStr )
 				&& ( prodIdCStr  == d.prodIdCStr )
 				&& ( sernIdCStr  == d.sernIdCStr )
-				&& ( mid         == d.mid )
+				&& ( vid         == d.vid )
 				&& ( pid         == d.pid )
 				;
 		}
 	}
 
-	bool sortofequal( const Dongle& d )
+	bool operator != ( const Dongle& d ) const
 	{
-		return ( memcmp( &usbpath, &d.usbpath, sizeof( usbpath )) == 0 )
-			&& ( devindex == d.devindex )
-			&& ( mid      == d.mid )
-			&& ( pid      == d.pid )
-			;
+		return !( *this == d );
 	}
 
 	CString manfIdCStr;					//	Null terminated Manufacturer ID string
 	CString prodIdCStr;					//	Null terminated Product ID string
 	CString sernIdCStr;					//	Null terminated Serial Number ID string
-	WORD	mid;						//	Manufacturer ID word
+	WORD	vid;						//	Manufacturer ID word
 	WORD	pid;						//	Product ID word.
 	BYTE	usbpath[ 7 ];				//	Stores USB path through hubs to device
 	bool	busy;						//	Device is busy if true.
-	BYTE	devindex;					//	LibUsb index for this device.
-	BYTE	iManufacturer;				//	Index of manufacturer string
-	BYTE	iProduct;					//	Index of product string
-	BYTE	iSerialNumber;				//	Index of serial number string
 	BYTE	tunerType;					//	Type of tuner per enum rtlsdr_tuner
 	char	found;						//	RTLSDR index for merging data
 };
@@ -138,18 +139,18 @@ public:
 __inline void Return::operator = ( const Dongle& d )
 {
 	memset( &manfIdStr, 0, sizeof( Return ));
-	mid           = d.mid;
+	vid           = d.vid;
 	pid           = d.pid;
-	iManufacturer = d.iManufacturer;
-	iProduct	  = d.iProduct;
-	iSerialNumber = d.iSerialNumber;
+	busy          = d.busy;
+	found	      = d.found;
+	Spare         = 0;
 	tunerType     = d.tunerType;
+	NotNeeded     = 0;
 
 	memcpy( manfIdStr, CStringA( d.manfIdCStr ), d.manfIdCStr.GetLength());
 	memcpy( prodIdStr, CStringA( d.prodIdCStr ), d.prodIdCStr.GetLength());
 	memcpy( sernIdStr, CStringA( d.sernIdCStr ), d.sernIdCStr.GetLength());
 	memcpy( usbpath, d.usbpath, MAX_USB_PATH );
-	devindex = d.devindex;
 }
 
 class CDongleArray : public CArray< Dongle, Dongle >
@@ -189,5 +190,14 @@ public:
 		}
 		return __super::Add( dongle );
 	}
+
+	void SetAllNotFound( void )
+	{
+		for ( INT_PTR i = 0; i < GetSize(); i++ )
+		{
+			GetAt( i ).found = -1;
+		}
+	}
+
 	// For this one we do not sort or any of the other nifty stuff.
 };

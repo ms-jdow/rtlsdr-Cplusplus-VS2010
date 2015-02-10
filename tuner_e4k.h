@@ -212,11 +212,21 @@ public:
 	virtual int set_if_gain				( int stage
 										, int gain /* tenth dB */
 										);
+	virtual int get_tuner_stage_gains	( uint8_t stage
+										, const int32_t **gains
+										, const char **description
+										);
+	virtual int set_tuner_stage_gain	( uint8_t stage
+										, int32_t gain
+										);
 	virtual int set_gain_mode			( int manual );
 	virtual int set_dither				( int dither ) _DUMMY_;
 
 	virtual int	get_xtal_frequency		( uint32_t& xtalfreq );
 	virtual int	set_xtal_frequency		( uint32_t xtalfreq );
+	virtual int	get_tuner_gains			( const int **out_ptr
+										, int *out_len
+										);
 
 protected:
 	int			e4k_reg_write			( uint8_t reg
@@ -289,9 +299,17 @@ protected:
 										, int8_t qrange
 										);
 	int			e4k_dc_offset_calibrate	( void );
+#if defined( E4K_DC_OFFSET_CAL )
 	int			e4k_dc_offset_gen_table	( void );
-	
+#endif	
 	int			e4k_set_lna_gain		( int32_t gain );
+
+	int			e4k_set_lna_mixer_if_gain( int32_t gain);
+
+	void		compute_gain_table		( void );
+	int			e4k_get_tuner_gains		( const int **ptr
+										, int *len
+										);
 	int			e4k_enable_manual_gain	( uint8_t manual );
 	int			e4k_set_enh_gain		( int32_t gain );
 
@@ -304,5 +322,9 @@ protected:	// struct e4k_state
 	uint8_t					i2c_addr;
 	enum e4k_band			band;
 	struct e4k_pll_params	vco;
+
+	//	Stage gains
+	int						gain_mode;
+
 	rtlsdr *				rtldev;
 };

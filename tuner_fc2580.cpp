@@ -60,6 +60,20 @@ int fc2580Tuner::set_bw( int bw /* Hz */)
 	return fc2580_SetBandwidthMode( 1 );
 }
 
+static const int fc2580_gain_table[] = { 0 /* no gain values */ };
+
+int fc2580Tuner::get_tuner_gains( const int **out_ptr, int *out_len )
+{
+	if ( !out_len )
+		return -1;
+
+	*out_len = 1 * sizeof( int );
+	if ( out_ptr )
+		*out_ptr = fc2580_gain_table;
+	return 0;
+}
+
+
 
 
 int	fc2580Tuner::get_xtal_frequency( uint32_t& xtalfreq )

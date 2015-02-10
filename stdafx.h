@@ -36,6 +36,8 @@
 #include <afxcmn.h>                     // MFC support for Windows Common Controls
 #endif // _AFX_NO_AFXCMN_SUPPORT
 
+#include "afxmt.h"			// needed for MFC support for mutex.
+
 #ifndef MODE_STATIC
 #define MODE_STATIC		1
 #define MODE_EXPORT		2
