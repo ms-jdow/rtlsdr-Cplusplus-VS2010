@@ -18,5 +18,7 @@
 /Win32
 /Win32/Debug
 /Win32/Release
+Release
+Debug
 */Debug/*
 */Release/*
