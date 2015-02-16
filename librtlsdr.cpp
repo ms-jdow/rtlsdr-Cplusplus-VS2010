@@ -97,6 +97,7 @@ rtlsdr::rtlsdr()
 	, effective_freq( 0 )
 	, corr( 0 )
 	, gain( 0 )
+	, gain_mode( GAIN_MODE_MANUAL )
 	, driver_active( 0 )
 	, tuner_initialized( 0 )
 	, spectrum_inversion( 0 )
@@ -677,11 +678,16 @@ int rtlsdr::rtlsdr_set_tuner_gain( int in_gain )
 	if ( tuner == NULL )
 		return -1;
 
-	rtlsdr_set_i2c_repeater( 1 );
-	r = tuner->set_gain( in_gain );
-	rtlsdr_set_i2c_repeater( 0 );
+	//	If we are in per stage gain mode protect
+	//	the gains as individually setup.
+	if ( gain_mode < GAIN_MODE_STAGES )
+	{
+		rtlsdr_set_i2c_repeater( 1 );
+		r = tuner->set_gain( in_gain );
+		rtlsdr_set_i2c_repeater( 0 );
+	}
 
-	if ( !r )
+	if ( r >= 0 )
 		gain = in_gain;
 	else
 		gain = 0;
@@ -694,7 +700,8 @@ int rtlsdr::rtlsdr_get_tuner_gain( void )
 	if ( tuner == NULL )
 		return 0;
 
-	return gain;
+	//	Always return what the tuner's opinion on the matter.
+	return tuner->get_gain();
 }
 
 int rtlsdr::rtlsdr_set_tuner_if_gain( int stage, int gain )
@@ -740,6 +747,21 @@ int rtlsdr::rtlsdr_get_tuner_stage_gains( uint8_t stage, int32_t *gains, char *d
 	}
 }
 
+int rtlsdr::rtlsdr_get_tuner_stage_count( void )
+{
+	if ( !devh || !tuner )
+		return -1;
+	return tuner->get_tuner_stage_count();
+}
+
+int rtlsdr::rtlsdr_get_tuner_stage_gain( uint8_t stage )
+{
+	if ( !devh || !tuner )
+		return 0;
+
+	return tuner->get_tuner_stage_gain( stage );
+}
+
 int rtlsdr::rtlsdr_set_tuner_stage_gain( uint8_t stage, int32_t gain )
 {
 	int rc;
@@ -747,7 +769,7 @@ int rtlsdr::rtlsdr_set_tuner_stage_gain( uint8_t stage, int32_t gain )
 	if ( !devh || !tuner )
 		return -1;
 
-	rtlsdr_set_i2c_repeater(  1 );
+	rtlsdr_set_i2c_repeater( 2 );
 	rc = tuner->set_tuner_stage_gain( stage, gain );
 	rtlsdr_set_i2c_repeater( 0 );
 	return rc;
@@ -759,11 +781,13 @@ int rtlsdr::rtlsdr_set_tuner_gain_mode( int mode )
 
 	if ( tuner == NULL )
 		return -1;
-
-	rtlsdr_set_i2c_repeater( 1 );
-	r = tuner->set_gain_mode( mode );
-	rtlsdr_set_i2c_repeater( 0 );
-
+	if ( mode < GAIN_MODE_STAGES )
+	{
+		rtlsdr_set_i2c_repeater( 1 );
+		r = tuner->set_gain_mode( mode );
+		rtlsdr_set_i2c_repeater( 0 );
+	}
+	gain_mode = mode;
 	return r;
 }
 
@@ -1277,10 +1301,10 @@ int rtlsdr::rtlsdr_open( uint32_t index )
 	rtl_xtal = DEF_RTL_XTAL_FREQ;
 
 	/* perform a dummy write, if it fails, reset the device */
-//	if ( dummy_write())	// Let's do the reset as a matter of course.
+	if ( dummy_write())
 	{
-//		fprintf(stderr, "Resetting device...\n");
-//		TRACE( "Resetting device...\n");
+		fprintf(stderr, "Resetting device...\n");
+		TRACE( "Resetting device...\n");
 		libusb_reset_device( devh );
 		Sleep( 30 );	//	Give the device a wee little time to recover.
 	}

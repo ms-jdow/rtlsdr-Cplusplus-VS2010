@@ -83,14 +83,17 @@ public:
 										, uint32_t *lo_freq_out
 										);
 	virtual int set_bw					( int bw /* Hz */);
+	virtual	int get_gain				( void );	/* tenth dB */
 	virtual int set_gain				( int gain /* tenth dB */);
 	virtual int set_if_gain				( int stage
 										, int gain /* tenth dB */
 										);
+	virtual int get_tuner_stage_count	( void ) { return 3; }
 	virtual int get_tuner_stage_gains	( uint8_t stage
 										, const int32_t **gains
 										, const char **description
 										);
+	virtual int get_tuner_stage_gain	( uint8_t stage );	// TODOTODO
 	virtual int set_tuner_stage_gain	( uint8_t stage
 										, int32_t gain
 										);
@@ -154,9 +157,6 @@ protected:
 	int			r82xx_set_dither		( int dither );
 
 	int			r82xx_enable_manual_gain( uint8_t manual);
-	int			r82xx_get_tuner_gains	( const int **ptr
-										, int *len
-										);
 
 	int			r82xx_get_tuner_stage_gains
 										( uint8_t stage
@@ -211,6 +211,7 @@ protected:	//	private variables
 
 	//	Stage gains
 	int					gain_mode;
+	int					stagegains[ 3 ];
 
 	rtlsdr*				rtldev;
 };

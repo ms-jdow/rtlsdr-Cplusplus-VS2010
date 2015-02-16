@@ -208,16 +208,19 @@ public:
 	virtual int set_freq				( uint32_t freq /* Hz */
 										, uint32_t *lo_freq_out );
 	virtual int set_bw					( int bw /* Hz */) ;
+	virtual	int get_gain				( void );	/* tenth dB */
 	virtual int set_gain				( int gain /* tenth dB */);
 	virtual int set_if_gain				( int stage
 										, int gain /* tenth dB */
 										);
+	virtual int get_tuner_stage_count	( void ) { return 8; }
 	virtual int get_tuner_stage_gains	( uint8_t stage
 										, const int32_t **gains
 										, const char **description
 										);
+	virtual int get_tuner_stage_gain	( uint8_t stage );
 	virtual int set_tuner_stage_gain	( uint8_t stage
-										, int32_t gain
+										, int gain
 										);
 	virtual int set_gain_mode			( int manual );
 	virtual int set_dither				( int dither ) _DUMMY_;
@@ -266,16 +269,16 @@ protected:
 										);
 	int			e4k_band_set			( enum e4k_band band );
 	int			find_stage_gain			( uint8_t stage
-										, int8_t val
+										, int16_t val
 										);
 	int			magic_init				( void );
 
 	int			e4k_init				( void );
 	int			e4k_standby				( int enable );
-	int			e4k_if_gain_set			( uint8_t stage
-										, int8_t value
+	int			e4k_if_gain_set			( int8_t stage
+										, int16_t value
 										);
-	int			e4k_mixer_gain_set		( int8_t value );
+	int			e4k_mixer_gain_set		( int16_t value );
 	int			e4k_commonmode_set		( int8_t value );
 	int			e4k_tune_freq			( uint32_t freq
 										, uint32_t *lo_freq_out
@@ -302,9 +305,9 @@ protected:
 #if defined( E4K_DC_OFFSET_CAL )
 	int			e4k_dc_offset_gen_table	( void );
 #endif	
-	int			e4k_set_lna_gain		( int32_t gain );
+	int			e4k_set_lna_gain		( int16_t gain );
 
-	int			e4k_set_lna_mixer_if_gain( int32_t gain);
+	int			e4k_set_lna_mixer_if_gain( int16_t gain);
 
 	void		compute_gain_table		( void );
 	int			e4k_get_tuner_gains		( const int **ptr
@@ -316,6 +319,7 @@ protected:
 	uint32_t	unsigned_delta			( uint32_t a	
 										, uint32_t b
 										);
+	void		set_default_if_gains	( void );
 
 protected:	// struct e4k_state
 	void *					i2c_dev;
@@ -325,6 +329,7 @@ protected:	// struct e4k_state
 
 	//	Stage gains
 	int						gain_mode;
+	int						stagegains[ 8 ];
 
 	rtlsdr *				rtldev;
 };

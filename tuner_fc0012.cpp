@@ -30,6 +30,7 @@
 
 fc0012Tuner::fc0012Tuner( rtlsdr* in_dev )
 	: rtldev( in_dev )
+	, setgain( 0 )
 {
 }
 
@@ -54,9 +55,17 @@ int fc0012Tuner::set_freq( uint32_t freq /* Hz */, uint32_t *lo_freq_out )
 	return fc0012_set_params( freq, 6000000 );
 }
 
+int fc0012Tuner::get_gain( void )
+{
+	return setgain;
+}
+
 int fc0012Tuner::set_gain( int gain /* tenth dB */)
 {
-	return fc0012_set_gain( gain );
+	int rc = fc0012_set_gain( gain );
+	if ( rc >= 0 )
+		setgain = gain;
+	return rc;
 }
 
 static const int fc0012_gains[] = { -99, -40, 71, 179, 192 };

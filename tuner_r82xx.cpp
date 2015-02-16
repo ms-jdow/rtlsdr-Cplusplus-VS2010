@@ -391,6 +391,7 @@ r82xxTuner::r82xxTuner( rtlsdr* base, enum rtlsdr_tuner type )
 	, m_i2c_addr( type == RTLSDR_TUNER_R828D ? R828D_I2C_ADDR : R820T_I2C_ADDR )
 	, gain_mode( 0 )
 {
+	memset( stagegains, 0, sizeof( stagegains ));
 	r82xx_calculate_stage_gains();
 	r82xx_compute_gain_table();
 }
@@ -452,6 +453,15 @@ int r82xxTuner::set_bw( int bw /* Hz */)
 	return r82xx_set_bw( bw );
 }
 
+int r82xxTuner::get_gain( void )
+{
+	return stagegains[ 0 ]
+		 + stagegains[ 1 ]
+		 + stagegains[ 2 ]
+		 - 163;					// Make display match what it used to
+
+}
+
 int r82xxTuner::set_gain( int gain /* tenth dB */)
 {
 	return r82xx_set_gain( gain );
@@ -487,15 +497,28 @@ int r82xxTuner::get_tuner_stage_gains( uint8_t stage
 	return 0;
 }
 
+int r82xxTuner::get_tuner_stage_gain( uint8_t stage )
+{
+	if ( stage < 3 )
+		return stagegains[ stage ];
+	return 0;
+}
+
 int r82xxTuner::set_tuner_stage_gain( uint8_t stage, int32_t gain )
 {
+	int rc = -10;
 	if ( stage == 0 )
-		return r82xx_set_lna_gain( gain );
+		rc = r82xx_set_lna_gain( gain );
 	else
 	if ( stage == 1 )
-		return r82xx_set_mixer_gain( gain );
+		rc = r82xx_set_mixer_gain( gain );
 	else
-		return r82xx_set_VGA_gain( gain );
+		rc = r82xx_set_VGA_gain( gain );
+	if ( rc < 0 )
+		return rc;
+
+	stagegains[ stage ] = gain;
+	return 0;
 }
 
 int r82xxTuner::set_gain_mode( int manual )
@@ -1404,17 +1427,17 @@ int r82xxTuner::r82xx_set_gain( int gain )
 			/* set fixed VGA gain for now (16.3 dB) */
 			vga_index = 0x08;
 
+			//	TODOTODO: Can I do this better?
 			for ( i = 0; i < 15; i++ )
 			{
 				if ( total_gain >= gain )
 					break;
 
-				total_gain += r82xx_lna_gain_steps[ ++lna_index ];
+				total_gain += r82xx_lna_gain_steps[ ++lna_index ];;
 
 				if ( total_gain >= gain )
 					break;
-
-				total_gain += r82xx_mixer_gain_steps[ ++mix_index ];
+				total_gain += r82xx_mixer_gain_steps[ ++mix_index ];;
 			}
 			break;
 		case GAIN_MODE_LINEARITY:
@@ -1430,6 +1453,7 @@ int r82xxTuner::r82xx_set_gain( int gain )
 				lna_index = t->lna_gain_index[ SIZE_GAIN_TABLE - i - 1 ];
 				mix_index = t->mix_gain_index[ SIZE_GAIN_TABLE - i - 1 ];
 				vga_index = t->vga_gain_index[ SIZE_GAIN_TABLE - i - 1 ];
+
 				break;
 			}
 		}
@@ -1447,6 +1471,10 @@ int r82xxTuner::r82xx_set_gain( int gain )
 		rc = r82xx_write_reg_mask( 0x07, mix_index, 0x0f );
 		if (rc < 0)
 			return rc;
+
+		stagegains[ 0 ] = LNA_stage[ lna_index ];
+		stagegains[ 1 ] = Mixer_stage[ mix_index ];
+		stagegains[ 2 ] = IF_stage[ vga_index ];
 	}
 
 	return 0;
@@ -1457,8 +1485,8 @@ int r82xxTuner::r82xx_enable_manual_gain( uint8_t in_gain_mode )
 	int rc;
 	uint8_t data[4];
 
-	if ( in_gain_mode > GAIN_MODE_COUNT )
-		in_gain_mode = GAIN_MODE_COUNT;
+	if ( in_gain_mode >= MAX_TUNER_GAIN_MODES )
+		in_gain_mode = GAIN_MODE_MANUAL;
 
 	if ( gain_mode != in_gain_mode )
 	{
@@ -1533,6 +1561,10 @@ void r82xxTuner::r82xx_compute_gain_table( void )
 			int lna_index = 0;
 			int mixer_index = 0;
 			int len = 0;
+			//	This is correct even if it looks very odd.
+			//	In the finished table of 28 entries you get
+			//	lna gain increasing first then mixer gain.
+			//	vga gain is constant at 7.7 dB.
 			for ( int i = 0; i < 15; i++ )
 			{
 				r82xx_gain_table[ len++ ] = LNA_stage[ lna_index++ ] + Mixer_stage[ mixer_index ];
@@ -1575,6 +1607,8 @@ int r82xxTuner::r82xx_set_lna_gain( int32_t gain )
 			rc = r82xx_write_reg_mask( 0x05, lna_index, 0x0f );
 			if ( rc < 0 )
 				return rc;
+
+			stagegains[ 0 ] = gain;
 			return 0;
 		}
 	}
@@ -1598,6 +1632,9 @@ int r82xxTuner::r82xx_set_mixer_gain( int32_t gain )
 			rc = r82xx_write_reg_mask( 0x07, mixer_index, 0x0f );
 			if ( rc < 0 )
 				return rc;
+
+			stagegains[ 1 ] = gain;
+
 			return 0;
 		}
 	}
@@ -1620,6 +1657,9 @@ int r82xxTuner::r82xx_set_VGA_gain( int32_t gain )
 			rc = r82xx_write_reg_mask( 0x0c, IF_index, 0x9f ); // TODO 0x0F or 0x9F?
 			if ( rc < 0 )
 				return rc;
+
+			stagegains[ 2 ] = gain;
+
 			return 0;
 		}
 	}

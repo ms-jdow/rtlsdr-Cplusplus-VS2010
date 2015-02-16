@@ -125,7 +125,6 @@ int rtlsdr::FindDongleByIdString( LPCTSTR source )
 //	in the DongleArray "Add()" function.)
 void rtlsdr::WriteRegistry( void )
 {
-	TRACE( "WriteRegistry\n" );
 	CMutexLock cml( registry_mutex );
 
 	DWORD   resVal;
@@ -148,7 +147,6 @@ void rtlsdr::WriteRegistry( void )
 
 	if ( resVal == ERROR_SUCCESS ) 
 	{
-		TRACE( L"Got rtlsdr key" );
 		// First initiate any global values the various classes have.
 		DWORD resVal;
 		DWORD keytype = REG_DWORD;
@@ -179,7 +177,6 @@ void rtlsdr::WriteRegistry( void )
 //	STATIC //
 uint32_t rtlsdr::WriteSingleRegistry( int index )
 {
-	TRACE( "WriteSingleRegistry( %d)\n", index );
 	DWORD   resVal;
 	HKEY    hRtlsdrKey	= NULL;
 	DWORD	status;
@@ -202,7 +199,6 @@ uint32_t rtlsdr::WriteSingleRegistry( int index )
 
 	if ( resVal == ERROR_SUCCESS ) 
 	{
-		TRACE( L"Got rtlsdr key\n" );
 		// First initiate any global values the various classes have.
 		DWORD resVal;
 		DWORD keytype = REG_DWORD;
@@ -231,7 +227,6 @@ uint32_t rtlsdr::WriteSingleRegistry( int index )
 //	STATIC //
 void rtlsdr::WriteRegLastCatalogTime( void )
 {
-	TRACE( "WriteRegLastCatalogTime\n" );
 	CMutexLock cml( registry_mutex );
 	DWORD   resVal;
 	HKEY    hRtlsdrKey	= NULL;
@@ -254,7 +249,6 @@ void rtlsdr::WriteRegLastCatalogTime( void )
 	//
 	if ( resVal == ERROR_SUCCESS ) 
 	{
-		TRACE( L"Got rtlsdr key\n" );
 		DWORD resVal;
 		DWORD debugfile = true;
 		// So now we read values we need.
@@ -273,7 +267,6 @@ void rtlsdr::WriteRegLastCatalogTime( void )
 
 void rtlsdr::ReadRegistry( void )
 {
-	TRACE( "ReadRegistry\n" );
 	CMutexLock cml( registry_mutex );
 
 	DWORD   resVal;
@@ -289,7 +282,6 @@ void rtlsdr::ReadRegistry( void )
 
 	if ( resVal == ERROR_SUCCESS ) 
 	{
-		TRACE( L"Got rtlsdr key" );
 		// First initiate any global values the various classes have.
 		Return returned;
 		DWORD resVal;
@@ -316,7 +308,6 @@ void rtlsdr::ReadRegistry( void )
 			&&	( keytype == REG_BINARY ))
 			{
 				// Fill out a description
-				TRACE( L"Got %s, tuner %d\n", name, returned.tunerType );
 				Dongle dongle( returned );
 				Dongles.Add( dongle );	// Implicit Return = Dongle from Arrays
 			}
@@ -341,7 +332,6 @@ void rtlsdr::ReadRegistry( void )
 		&&	( keytype == REG_QWORD ))
 		{
 			// Fill out a description
-			TRACE( L"Got LastCatalog\n" );
 			Dongles.Add( returned );	// Implicit Return = Dongle from Arrays
 			lastCatalog = max( value, 1 );
 		}

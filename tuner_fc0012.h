@@ -41,16 +41,19 @@ public:
 	virtual int set_freq				( uint32_t freq /* Hz */
 										, uint32_t *lo_freq_out );
 	virtual int set_bw					( int bw /* Hz */) _DUMMY_
-	virtual int set_gain				( int gain /* tenth dB */);
+	virtual	int get_gain				( void );	/* tenth dB */
+	virtual int set_gain				( int gain	/* tenth dB */);
 	virtual int set_if_gain				( int stage
 										, int gain /* tenth dB */
 										) _DUMMY_
+	virtual int get_tuner_stage_count	( void ) _DUMMY_
 	virtual int get_tuner_stage_gains	( uint8_t stage
 										, const int32_t **gains
 										, const char **description
 										) _DUMMY_
+	virtual int get_tuner_stage_gain	( uint8_t stage ) _DUMMY_
 	virtual int set_tuner_stage_gain	( uint8_t stage
-										, int32_t gain
+										, int gain
 										) _DUMMY_
 	virtual int set_gain_mode			( int manual ) _DUMMY_
 	virtual int set_dither				( int dither ) _DUMMY_
@@ -79,5 +82,6 @@ protected:
 
 
 protected:
+	int		 setgain;
 	rtlsdr * rtldev;
 };

@@ -18,7 +18,8 @@ class fc0013Tuner;
 class fc2580Tuner;
 class r82xxTuner;
 
-
+//	Stages is a private mode to emphasize per stage control.
+#define MAX_TUNER_GAIN_MODES GAIN_MODE_STAGES
 
 class /*SDRDAPI */ rtlsdr // : public rtlsdr_dongle_comms
 {
@@ -85,9 +86,11 @@ public:
 											, int32_t *gains
 											, char *description
 											);
+	int			rtlsdr_get_tuner_stage_count( void );
 	int			rtlsdr_set_tuner_stage_gain	( uint8_t stage
 											, int32_t gain
 											);
+	int			rtlsdr_get_tuner_stage_gain	( uint8_t stage );
 	int			rtlsdr_set_tuner_gain_mode	( int mode );
 	int			rtlsdr_set_sample_rate		( uint32_t samp_rate );
 	uint32_t	rtlsdr_get_sample_rate		( void );
@@ -150,6 +153,7 @@ private:
 	uint32_t								effective_freq; /* Hz */
 	int										corr; /* ppm */
 	int										gain; /* tenth dB */
+	int										gain_mode;
 	/* status */
 	int										driver_active;
 	ITuner*									tunerset[ RTLSDR_TUNER_R828D + 1 ];

@@ -15,6 +15,7 @@ public:
 										, uint32_t *lo_freq_out
 										) PURE;
 	virtual int set_bw					( int bw /* Hz */) PURE;
+	virtual	int get_gain				( void ) PURE;	/* tenth dB. Computerd gain if necessary. */
 	virtual int set_gain				( int gain /* tenth dB */) PURE;
 	virtual int set_if_gain				( int stage
 										, int gain /* tenth dB */
@@ -23,8 +24,10 @@ public:
 										, const int32_t **gains
 										, const char **description
 										) PURE;
+	virtual int get_tuner_stage_count	( void ) PURE;
+	virtual int get_tuner_stage_gain	( uint8_t stage ) PURE;
 	virtual int set_tuner_stage_gain	( uint8_t stage
-										, int32_t gain
+										, int gain
 										) PURE;
 	virtual int set_gain_mode			( int manual ) PURE;
 	virtual int set_dither				( int dither ) PURE;

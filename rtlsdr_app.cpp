@@ -431,6 +431,22 @@ RTLSDR_API int rtlsdr_get_tuner_stage_gains( rtlsdr_dev_t *dev
 	return -1;
 }
 
+RTLSDR_API int rtlsdr_get_tuner_stage_count( rtlsdr_dev_t *dev )
+{
+	HERE();
+	if ( dev != NULL )
+		return ((rtlsdr*) dev )->rtlsdr_get_tuner_stage_count();
+	return -1;
+}
+
+RTLSDR_API int rtlsdr_get_tuner_stage_gain(rtlsdr_dev_t *dev, uint8_t stage )
+{
+	HERE();
+	if ( dev != NULL )
+		return ((rtlsdr*) dev )->rtlsdr_get_tuner_stage_gain( stage );
+	return -1;
+}
+
 RTLSDR_API int rtlsdr_set_tuner_stage_gain(rtlsdr_dev_t *dev, uint8_t stage, int32_t gain)
 {
 	HERE();

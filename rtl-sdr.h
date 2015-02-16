@@ -266,6 +266,23 @@ RTLSDR_API int rtlsdr_set_tuner_if_gain(rtlsdr_dev_t *dev, int stage, int gain);
 #define DESCRIPTION_MAXLEN 256
 RTLSDR_API int rtlsdr_get_tuner_stage_gains(rtlsdr_dev_t *dev, uint8_t stage, int32_t *gains, char *description);
 
+/*!
+ * Get the number of stages for per stage gain control for this device.
+ * \param dev the device handle given by rtlsdr_open()
+ * \return <= 0 on error, number of available stages otherwise
+ */
+RTLSDR_API int rtlsdr_get_tuner_stage_count(rtlsdr_dev_t *dev);
+
+/*!`
+ * Set the gain of a stage in the tuner
+ *
+ * \param dev the device handle given by rtlsdr_open()
+ * \param stage the stage to set gain for
+ * \param in tenths of a dB, e.g. -30 means -3.0 dB.
+ * \return in tenths of a dB, e.g. -30 means -3.0 dB. (0dB if inappropriate)
+ */
+RTLSDR_API int rtlsdr_get_tuner_stage_gain(rtlsdr_dev_t *dev, uint8_t stage);
+
 /*!`
  * Set the gain of a stage in the tuner
  *
@@ -281,6 +298,7 @@ enum rtl_sdr_gain_mode {
 	GAIN_MODE_MANUAL,
 	GAIN_MODE_LINEARITY,
 	GAIN_MODE_SENSITIVITY,
+	GAIN_MODE_STAGES,
 	GAIN_MODE_COUNT			// Count of gain modes. Not a real gain mode.
 };
 

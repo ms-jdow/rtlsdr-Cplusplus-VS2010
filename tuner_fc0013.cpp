@@ -32,6 +32,7 @@ typedef struct rtlsdr_dev rtlsdr_dev_t;
 
 fc0013Tuner::fc0013Tuner( rtlsdr* base )
 	: rtldev( base )
+	, setgain( 0 )
 {
 }
 
@@ -55,9 +56,17 @@ int fc0013Tuner::set_freq( uint32_t freq /* Hz */
 	return fc0013_set_params( freq, 6000000 );
 }
 
+int fc0013Tuner::get_gain( void )
+{
+	return setgain;
+}
+
 int fc0013Tuner::set_gain( int gain /* tenth dB */)
 {
-	return fc0013_set_lna_gain( gain );
+	int rc = fc0013_set_lna_gain( gain );
+	if ( rc >= 0 )
+		setgain = gain;
+	return rc;
 }
 
 static const int fc0013_gains[] = { -99, -73, -65, -63, -60, -58, -54, 58, 61,
