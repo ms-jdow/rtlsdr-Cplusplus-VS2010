@@ -11,7 +11,7 @@
 { \
 /*	CStringA msg; \
 	msg.Format( "%s\n", __FUNCTION__ ); \
-	OutputDebugStringA( msg ); */ \
+	OutputDebugStringA( msg ); */\
 }
 
 static CList< rtlsdr*, rtlsdr* > appdongles;
@@ -46,7 +46,7 @@ static CList< rtlsdr*, rtlsdr* > appdongles;
 #include "rtlsdr_app.h"
 #define X theApp.
 
-CStringA	rtlsdr_app::VersionString;
+CStringA	RtlSdrVersionString;
 
 BEGIN_MESSAGE_MAP(rtlsdr_app, CWinApp)
 END_MESSAGE_MAP()
@@ -73,12 +73,12 @@ rtlsdr_app theApp;
 #pragma comment( lib, "version.lib" )
 
 // CRTLDirectApp initialization
-const char* rtlsdr_app::InitInstance()
+BOOL rtlsdr_app::InitInstance()
 {
 	HERE();
 	CWinApp::InitInstance();
 
-	if ( VersionString.IsEmpty())
+	if ( RtlSdrVersionString.IsEmpty() && 0)
 	{
 		TCHAR me[ _MAX_PATH ];
 		::GetModuleFileName( m_hInstance, me, _MAX_PATH );
@@ -98,7 +98,7 @@ const char* rtlsdr_app::InitInstance()
 				WORD revhi = HIWORD( ffinfo->dwFileVersionLS );
 				WORD revlo = LOWORD( ffinfo->dwFileVersionLS );
 				//	And so forth
-				VersionString.Format( "%d.%d.%d.%d", verhi, verlo, revhi, revlo );
+				RtlSdrVersionString.Format( "%d.%d.%d.%d", verhi, verlo, revhi, revlo );
 			}
 			else
 				TRACE( "Last error %d\n", GetLastError());
@@ -106,7 +106,7 @@ const char* rtlsdr_app::InitInstance()
 		}
 	}
 	HERE();
- 	return VersionString;
+ 	return true;
 }
 
 BOOL rtlsdr_app::ExitInstance()
@@ -176,7 +176,7 @@ void rtlsdr_app::CloseSdrDongle( rtlsdr* dongle )
 
 #define X	// theApp.
 
-static CStringA VersionString;
+static CStringA RtlSdrVersionString;
 #pragma comment( lib, "version.lib" )
 
 static rtlsdr* GetSdrDongle( void )	//	Used if needed.
@@ -592,17 +592,17 @@ RTLSDR_API int rtlsdr_cancel_async(rtlsdr_dev_t *dev)
 RTLSDR_API const char* rtlsdr_get_version( void )
 {
 	HERE();
-	if ( VersionString.IsEmpty())
+	if ( RtlSdrVersionString.IsEmpty())
 	{
 		rtlsdr_get_version_int64();
 	}
-	return VersionString;
+	return RtlSdrVersionString;
 }
 
 RTLSDR_API unsigned __int64 rtlsdr_get_version_int64( void )
 {
 	HERE();
-	if ( VersionString.IsEmpty())
+	if ( RtlSdrVersionString.IsEmpty())
 	{
 		CString work;
 		TCHAR *me = work.GetBuffer( _MAX_PATH );
@@ -610,13 +610,13 @@ RTLSDR_API unsigned __int64 rtlsdr_get_version_int64( void )
 		work.ReleaseBuffer();
 		if ( work.IsEmpty())
 		{
-			VersionString = "We don't exist?";
+			RtlSdrVersionString = "We don't exist?";
 			return 0;		//	We don't really exist! (out of memory)
 		}
 		int loc = work.ReverseFind( _T( '\\' ));
 		if ( loc < 0 )
 		{
-			VersionString = "Can't find SDRConsole";
+			RtlSdrVersionString = "Can't find SDRConsole";
 			return 0;		//	We're confused.
 		}
 
@@ -639,7 +639,7 @@ RTLSDR_API unsigned __int64 rtlsdr_get_version_int64( void )
 				WORD revhi = HIWORD( ffinfo->dwFileVersionLS );
 				WORD revlo = LOWORD( ffinfo->dwFileVersionLS );
 
-				VersionString.Format( "%u.%u.%u.%u", verhi, verlo, revhi, revlo );
+				RtlSdrVersionString.Format( "%u.%u.%u.%u", verhi, verlo, revhi, revlo );
 				delete vinfo;
 				return (((unsigned __int64)verhi ) << 48 )
 					   | (((unsigned __int64)verlo ) << 32 )

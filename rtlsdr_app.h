@@ -19,6 +19,7 @@
 
 #if defined THEAPP
 class rtlsdr;
+extern CStringA RtlSdrVersionString;
 
 class rtlsdr_app : public CWinApp
 {
@@ -29,7 +30,7 @@ public:
 	rtlsdr*		GetSdrDongle			( void );
 	void		CloseSdrDongle			( rtlsdr* dongle );
 	rtlsdr*		FindDongleByDeviceIndex	( int index );
-	LPCTSTR		GetVersionString		( void ) { return VersionString; }
+	LPCSTR		GetRtlSdrVersionString	( void ) { return RtlSdrVersionString; }
 
 // Overrides
 public:
@@ -38,7 +39,7 @@ public:
 
 	DECLARE_MESSAGE_MAP()
 
-	static CString	VersionString;
+//	static CStringA	RtlSdrVersionString;
 
 protected:
 };
