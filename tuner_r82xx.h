@@ -174,6 +174,8 @@ protected:
 	int			r82xx_set_mixer_gain	( int32_t gain );
 	int			r82xx_set_VGA_gain		( int32_t gain );
 
+	int			r820t_calibrate			(  int calibration_lo  );	//  Calibrate tuner/TV standard
+
 protected:	//	config variables
 	uint8_t				m_i2c_addr;
 	uint32_t			m_xtal;

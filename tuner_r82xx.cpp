@@ -1241,6 +1241,9 @@ int r82xxTuner::r82xx_init_tv_standard( unsigned in_bw
 	}
 	m_int_freq = if_khz * 1000;
 
+#define CALIBRATION_LO 88000	// Airspy frequency....
+	rc = r82xxTuner::r820t_calibrate( 88000 );//filt_cal_lo );	// Should this be 60000?
+
 	/* Set Img_R */
 	rc = r82xx_write_reg_mask( 0x07, img_r, 0x80 );
 	if ( rc < 0 )
@@ -2027,6 +2030,67 @@ int r82xxTuner::r82xx_init( void )
 	return rc;
 }
 
+/* 
+"inspired by Mauro Carvalho Chehab calibration technique"
+https://stuff.mit.edu/afs/sipb/contrib/linux/drivers/media/tuners/r820t.c
+part of r820t_set_tv_standard()
+*/
+#define CALIBRATION_LO 88000	// Airspy
+int r82xxTuner::r820t_calibrate( int calibration_lo )
+{
+  int i, rc, cal_code;
+  uint8_t data[ 5 ];
+
+  for ( i = 0; i < 5; i++ )
+  {
+    /* Set filt_cap */
+    rc = r82xx_write_reg_mask( 0x0b, 0x08, 0x60 );
+    if (rc < 0)
+      return rc;
+
+    /* set cali clk =on */
+    rc = r82xx_write_reg_mask( 0x0f, 0x04, 0x04 );
+    if (rc < 0)
+      return rc;
+
+    /* X'tal cap 0pF for PLL */
+    rc = r82xx_write_reg_mask( 0x10, 0x00, 0x03);
+    if (rc < 0)
+      return rc;
+
+    rc = r82xx_set_pll( calibration_lo * 1000, NULL );
+    if (rc < 0)
+      return rc;
+
+    /* Start Trigger */
+    rc = r82xx_write_reg_mask( 0x0b, 0x10, 0x10);
+    if (rc < 0)
+      return rc;
+
+    Sleep( 1 );
+
+    /* Stop Trigger */
+    rc = r82xx_write_reg_mask( 0x0b, 0x00, 0x10 );
+    if (rc < 0)
+      return rc;
+
+    /* set cali clk =off */
+    rc = r82xx_write_reg_mask( 0x0f, 0x00, 0x04 );
+    if (rc < 0)
+      return rc;
+
+    /* Check if calibration worked */
+    rc = r82xx_read( 0x00, data, sizeof( data ));
+    if (rc < 0)
+      return rc;
+
+    cal_code = data[4] & 0x0f;
+    if ( cal_code && cal_code != 0x0f )
+      return 0;
+  }
+
+  return -1;
+}
 
 #if 0
 /* Not used, for now */
