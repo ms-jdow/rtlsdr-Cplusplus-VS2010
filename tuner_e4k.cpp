@@ -44,7 +44,7 @@ struct reg_field
 #include "tuner_e4k.h"
 #include "librtlsdr.h"
 
-	const int e4k_gains[] = { -10, 15, 40, 65, 90, 115, 140, 165, 190, 215,
+static const int e4k_gains[] = { -10, 15, 40, 65, 90, 115, 140, 165, 190, 215,
 				  240, 290, 340, 420 };
 	/* Add standard gains */
 #if defined( CORRECT_FOR_DEFAULT_IFGAIN )	// Default IF gain is 24 aka 240
@@ -64,21 +64,103 @@ static const char IF4_desc[] = "IF4";
 static const char IF5_desc[] = "IF5";
 static const char IF6_desc[] = "IF6";
 
-static const int32_t LNA_stage[] = { -50, -25,	0, 25, 50, 75, 100, 125, 150, 175, 200, 250, 300 };
+static const int32_t LNA_stage[] = { -50, -25,	0, 25, 50, 75, 100, 125, 150, 175
+	, 200, 250, 300 };		// NoteThe 30 dB step does nothing.
 static const int32_t Mixer_stage[] = { 40, 120 };
 static const int32_t IF1_stage[] = { -30, 60 };
 static const int32_t IF2_stage[] = { 0, 30, 60, 90 };
 static const int32_t IF3_stage[] = { 0, 30, 60, 90 };
-static const int32_t IF4_stage[] = { 0, 10, 20, 30 };
+static const int32_t IF4_stage[] = { 0, 10, 20, 20 };
 static const int32_t IF5_stage[] = { 30, 60, 90, 120, 150 };
 static const int32_t IF6_stage[] = { 30, 60, 90, 120, 150 };
 
 
+typedef struct gain_table_mode_struct
+{
+	int16_t gain;
+	int16_t LNA_gain;
+	int16_t mixer_gain;
+	int16_t IF_gain[6];
+	/* data sheet seems wrong, LNA gain "30dB" is 25dB and mixer gain
+	   4dB is more 5dB */
+} gaintable;
+
+
+//	The standard curve shows gains as sum of LNA and Mixer without including
+//	the standard 24 dB IF gain always present. So subtract that 24 to get
+//	the reading or add 24 to reading to get the total gain we should have.
+
+#if defined( CORRECT_FOR_DEFAULT_IFGAIN )	// Default IF gain is 24 aka 240
+//						 60,  0,  0,  0,  90,  90 		/* LNA Mixer IF  Total  want  sb */
+//	Standard curve for 19 dB labeled gain =				   15    4   24	   43	 19	  43
+static const gaintable gain_table_mode_linearity[] =	/* This table is ridiculous but.... */
+{														/* LNA Mixer IF  Total  want  sb */
+	{  -10, -50,  40, { -30,  0,  0,  0, 150, 120 }},	/* -5    4   24    23    -1   23 */
+	{   40, -50,  40, { -30,  0,  0, 20, 150, 150 }},	/* -5    4   29    28     4   28 */
+	{   90, -50,  40, { -30, 60,  0, 20, 150, 150 }},	/* -5    4   34    33     9   33 */
+	{  140, -50, 120, { -30, 30,  0, 10, 150, 150 }},	/* -5   12   39    38    14   38 */
+	{  190,   0, 120, { -30, 30,  0, 10, 150, 150 }},	/*  0   12   31    43    19   43 */
+	{  240,   0, 120, { -30, 60, 30,  0, 150, 150 }},	/*  0   12   36    48    24   48 */
+	{  290,  50, 120, { -30, 60, 30,  0, 150, 150 }},	/*  5   12   36    53    29   53 */
+	{  340, 100, 120, { -30, 60, 30,  0, 150, 150 }},	/* 10   12   36    58    34   58 */
+	{  390, 150, 120, { -30, 60, 30,  0, 150, 150 }},	/* 15   12   36    63    39   63 */
+	{  440, 200, 120, { -30, 60, 30,  0, 150, 150 }},	/* 20   12   36    68    44   68 */
+	{  490, 250, 120, { -30, 60, 30,  0, 150, 150 }},	/* 25   12   36    73    49   73 */
+};
+static const gaintable gain_table_mode_sensitivity[] =
+{														/* LNA Mixer IF  Total  want  sb */
+	{  -10, 100,  40, { -30,  0,  0,  0,  90,  30 }},		/* 10    4   9     23    -1   23 */
+	{   40, 150,  40, { -30,  0,  0,  0,  90,  30 }},		/* 15    4   9     28     4   28 */
+	{   90, 200,  40, { -30,  0,  0,  0,  90,  30 }},		/* 20    4   9     33     9   33 */
+	{  140, 250,  40, { -30,  0,  0,  0,  90,  30 }},		/* 25    4   9     38    14   38 */
+	{  190, 250,  40, { -30,  0,  0, 20,  90,  60 }},		/* 25    4  14     43    19   43 */
+	{  240, 250, 120, { -30,  0,  0, 10, 120,  90 }},		/* 25   12  19     48    24   48 */
+	{  290, 250, 120, { -30, 30,  0,  0, 120, 120 }},		/* 25   12  24     52    29   53 */
+	{  340, 250, 120, {  60, 30,  0, 20,  90,  90 }},		/* 25   12  29     58    34   58 */
+	{  390, 250, 120, {  60, 30,  0, 10, 120, 120 }},		/* 25   12  34     63    39   63 */
+	{  440, 250, 120, {  60, 30,  0, 00, 150, 150 }},		/* 25   12  39     68    44   68 */
+	{  490, 250, 120, {  60, 60,  0, 20, 150, 150 }},		/* 25   12  44     73    49   73 */
+};
+
+#else	// defined( CORRECT_FOR_DEFAULT_IFGAIN )
+
+static const gaintable gain_table_mode_linearity[] =
+{														/* LNA Mixer IF  Total */
+	{ -250, -50,  40, { -30,  0, 0, 20,  90,  60 }},	/* -1    4   12    14  */
+	{ -200, -50,  40, { -30,  0, 0, 10, 120,  90 }},	/*  5    4   19    19  */
+	{ -150, -50,  40, { -30, 60, 0,  0, 120,  90 }},	/* -5    4   24    24  */
+	{ -100, -50, 120, { -30, 30, 0, 10, 120,  90 }},	/* -5   12   22    29  */
+	{  -50, -50, 120, { -30, 60, 0,  0, 120, 120 }},	/* -5   12   27    34  */
+	{    0,   0, 120, { -30, 60, 0,  0, 120, 120 }},	/*  0   12   27    39  */
+	{   50,  50, 120, { -30, 60, 0,  0, 120, 120 }},	/*  5   12   27    44  */
+	{  100, 100, 120, { -30, 60, 0,  0, 120, 120 }},	/* 10   12   27    49  */
+	{  150, 150, 120, { -30, 60, 0,  0, 120, 120 }},	/* 15   12   27    54  */
+	{  200, 200, 120, { -30, 60, 0,  0, 120, 120 }},	/* 20   12   27    59  */
+	{  250, 250, 120, { -30, 60, 0,  0, 120, 120 }},	/* 30   12   27    64  */
+};
+static const gaintable gain_table_mode_sensitivity[] =
+{														/* LNA Mixer IF  Total */
+	{ -250,  50,  40, { -30,  0,  0, 10, 60, 30 }},		/*  5    4    7    17  */
+	{ -200, 100,  40, { -30,  0,  0, 10, 60, 30 }},		/* 10    4    7    22  */
+	{ -150, 150,  40, { -30,  0,  0, 10, 60, 30 }},		/* 15    4    7    27  */
+	{ -100, 200,  40, { -30,  0,  0, 10, 60, 30 }},		/* 20    4    7    32  */
+	//	Affected by 30 dB LNA gain does not really exist.
+	{  -50, 250,  40, { -30,  0,  0, 10, 60, 30 }},		/* 30    4    7    37  */
+	{    0, 250, 120, { -30,  0,  0, 20, 30, 30 }},		/* 30   12    5    42  */
+	{   50, 250, 120, { -30, 30,  0, 10, 60, 30 }},		/* 30   12   10    47  */
+	{  100, 250, 120, {  60,  0,  0, 00, 60, 30 }},		/* 30   12   15    52  */
+	{  150, 250, 120, {  60,  0,  0, 20, 90, 30 }},		/* 30   12   20    57  */
+	{  200, 250, 120, {  60, 30,  0, 10, 90, 30 }},		/* 30   12   25    62  */
+	{  250, 250, 120, {  60, 60,  0,  0, 90, 60 }},		/* 30   12   30    67  */
+};
+#endif		//	defined( CORRECT_FOR_DEFAULT_IFGAIN )
+
+static int tuner_gain_table_linearity[ ARRAY_SIZE( gain_table_mode_linearity )];
+static int tuner_gain_table_sensitivity[ ARRAY_SIZE( gain_table_mode_sensitivity )];
+
 /* If this is defined, the limits are somewhat relaxed compared to what the
  * vendor claims is possible */
 #define OUT_OF_SPEC
-
-#define MAX_E4K_GAIN_MODES GAIN_MODE_COUNT
 
 e4kTuner::e4kTuner( rtlsdr* in_dev )
 	: rtldev( in_dev )
@@ -87,6 +169,7 @@ e4kTuner::e4kTuner( rtlsdr* in_dev )
 	, band( E4K_BAND_VHF2 )
 {
 	memset( &vco, 0 , sizeof( vco ));
+	memset( stagegains, 0, sizeof( stagegains ));
 }
 
 uint32_t e4kTuner::unsigned_delta(uint32_t a, uint32_t b)
@@ -127,18 +210,39 @@ int e4kTuner::set_bw( int bw /* Hz */)
 		r = 0;
 	return r;
 }
+
+int e4kTuner::get_gain( void )
+{
+	int val = stagegains[ 0 ]
+	     + stagegains[ 1 ]
+	     + stagegains[ 2 ]
+	     + stagegains[ 3 ]
+	     + stagegains[ 4 ]
+	     + stagegains[ 5 ]
+	     + stagegains[ 6 ]
+	     + stagegains[ 7 ]
+		 - 60 - 90 - 90		// Not counted in legacy versions
+		 ;
+	return val;
+}
+
 int e4kTuner::set_gain( int gain /* tenth dB */)
 {
-	int mixgain = ( gain > 340 ) ? 12 : 4;
+	//	Leave this even though it may do nothing...
+	int mixgain = ( gain > 340 ) ? 120 : 40;
 	/* Use only (the modified) set_lna_gain if the user
 	   asked for linearity or sensitivity. */
 	if ( gain_mode <= GAIN_MODE_MANUAL )
 	{
-		if ( e4k_set_lna_gain( min( 300, gain - mixgain * 10 )) == -EINVAL )
+		int tgain = min( 300, gain - mixgain );
+		if ( e4k_set_lna_gain( tgain ) == -EINVAL )
 			return -1;
+		stagegains[ 0 ] = tgain;
+
 		if ( e4k_mixer_gain_set( mixgain ) == -EINVAL )
 			return -1;
-		/*	Let's restore the init values for IF gain */
+
+		set_default_if_gains();
 
 #if 0 /* enhanced mixer gain seems to have no effect */
 		/* SM5BSZ: enhanced gain should affect how the AGC turns down the gain */
@@ -155,7 +259,7 @@ int e4kTuner::set_gain( int gain /* tenth dB */)
 
 int e4kTuner::set_if_gain( int stage, int gain /* tenth dB */)
 {
-	return e4k_if_gain_set((uint8_t) stage, (int8_t) ( gain / 10 ));
+	return e4k_if_gain_set((uint8_t) stage + 1, (int8_t) ( gain / 10 ));
 }
 
 int e4kTuner::set_gain_mode( int manual )
@@ -796,26 +900,26 @@ int e4kTuner::e4k_tune_freq( uint32_t freq, uint32_t *lo_freq )
 /***********************************************************************
  * Gain Control */
 
-static const int8_t if_stage1_gain[] =
+static const int16_t if_stage1_gain[] =
 {
-	-3, 6
+	-30, 60
 };
 
-static const int8_t if_stage23_gain[] =
+static const int16_t if_stage23_gain[] =
 {
-	0, 3, 6, 9
+	0, 30, 60, 90
 };
 
-static const int8_t if_stage4_gain[] =
+static const int16_t if_stage4_gain[] =
 {
-	0, 1, 2, 2		// Yes, that is from the E4000 documentation
+	0, 10, 20, 20		// Yes, that is from the E4000 documentation
 };
 
-static const int8_t if_stage56_gain[] = {
-	3, 6, 9, 12, 15, 15, 15, 15
+static const int16_t if_stage56_gain[] = {
+	30, 60, 90, 120, 150, 150, 150, 150
 };
 
-static const int8_t *if_stage_gain[] =
+static const int16_t *if_stage_gain[] =
 {
 	0,
 	if_stage1_gain,
@@ -862,7 +966,7 @@ static const int32_t lnagain[] =
 	175,	11,
 	200,	12,
 	250,	13,
-	300,	14,
+	300,	15,
 };
 
 static const int32_t enhgain[] =
@@ -870,7 +974,7 @@ static const int32_t enhgain[] =
 	10, 30, 50, 70
 };
 
-int e4kTuner::e4k_set_lna_gain( int32_t gain )
+int e4kTuner::e4k_set_lna_gain( int16_t gain )
 {
 	uint32_t i;
 	for( i = 0; i < ARRAY_SIZE( lnagain ) / 2; ++i )
@@ -878,88 +982,15 @@ int e4kTuner::e4k_set_lna_gain( int32_t gain )
 		if ( lnagain[ i * 2 ] == gain )
 		{
 			e4k_reg_set_mask( E4K_REG_GAIN1, 0xf, lnagain[ i * 2 + 1 ]);
+			stagegains[ 0 ] = gain;
 			return gain;
 		}
 	}
+	TRACE( "FAILED: e4k_set_lna_gain( %d )\n", gain );
 	return -EINVAL;
 }
 
-
-typedef struct gain_table_mode_struct {
-	int32_t gain;
-	int32_t LNA_gain;
-	int32_t mixer_gain;
-	int32_t IF_gain[6];
-	/* data sheet seems wrong, LNA gain "30dB" is 25dB and mixer gain
-	   4dB is more 5dB */
-} gaintable;
-
-#if defined( CORRECT_FOR_DEFAULT_IFGAIN )	// Default IF gain is 24 aka 240
-static const gaintable gain_table_mode_linearity[] =
-{												/* LNA Mixer IF  Total  Old total */
-	{  -10, -5,  4, { -3, 0, 0, 2,  9,  6 }},	/* -5    5  12     14      -1     */
-	{   40, -5,  4, { -3, 0, 0, 1, 12,  9 }},	/* -5    5  19     19       4     */
-	{   90, -5,  4, { -3, 6, 0, 0, 12,  9 }},	/* -5    5  24     24       9     */
-	{  140, -5, 12, { -3, 3, 0, 1, 12,  9 }},	/* -5   12  22     29      14     */
-	{  190, -5, 12, { -3, 6, 0, 0, 12, 12 }},	/* -5   12  27     34      19     */
-	{  240,  0, 12, { -3, 6, 0, 0, 12, 12 }},	/*  0   12  27     39      24     */
-	{  290,  5, 12, { -3, 6, 0, 0, 12, 12 }},	/*  5   12  27     44      29     */
-	{  340, 10, 12, { -3, 6, 0, 0, 12, 12 }},	/* 10   12  27     49      34     */
-	{  390, 15, 12, { -3, 6, 0, 0, 12, 12 }},	/* 15   12  27     54      39     */
-	{  440, 20, 12, { -3, 6, 0, 0, 12, 12 }},	/* 20   12  27     59      44     */
-	{  490, 30, 12, { -3, 6, 0, 0, 12, 12 }},	/* 25   12  27     64      49     */
-};
-static const gaintable gain_table_mode_sensitivity[] =
-{												/* LNA Mixer IF  Total  Old total */
-	{  -10,  5,  4, { -3, 0, 0, 1, 6, 0 }},		/*  5    5   7     14      -1     */
-	{   40, 10,  4, { -3, 0, 0, 1, 6, 0 }},		/* 10    5   7     19       4     */
-	{   90, 15,  4, { -3, 0, 0, 1, 6, 0 }},		/* 15    5   7     24       9     */
-	{  140, 20,  4, { -3, 0, 0, 1, 6, 0 }},		/* 20    5   7     29      14     */
-	{  190, 30,  4, { -3, 0, 0, 1, 6, 0 }},		/* 25    5   7     34      19     */
-	{  240, 30, 12, { -3, 0, 0, 2, 3, 0 }},		/* 25   12   5     39      24     */
-	{  290, 30, 12, { -3, 3, 0, 1, 6, 0 }},		/* 25   12  10     44      29     */
-	{  340, 30, 12, {  6, 0, 0, 0, 6, 0 }},		/* 25   12  15     49      34     */
-	{  390, 30, 12, {  6, 0, 0, 2, 9, 0 }},		/* 25   12  20     54      39     */
-	{  440, 30, 12, {  6, 3, 0, 1, 9, 3 }},		/* 25   12  25     59      44     */
-	{  490, 30, 12, {  6, 6, 0, 0, 9, 6 }},		/* 25   12  30     64      49     */
-};
-
-#else	// defined( CORRECT_FOR_DEFAULT_IFGAIN )
-
-static const gaintable gain_table_mode_linearity[] =
-{												/* LNA Mixer IF  Total */
-	{ -250, -5,  4, { -3, 0, 0, 2,  9,  6 }},	/* -5    5  12     14  */
-	{ -200, -5,  4, { -3, 0, 0, 1, 12,  9 }},	/* -5    5  19     19  */
-	{ -150, -5,  4, { -3, 6, 0, 0, 12,  9 }},	/* -5    5  24     24  */
-	{ -100, -5, 12, { -3, 3, 0, 1, 12,  9 }},	/* -5   12  22     29  */
-	{  -50, -5, 12, { -3, 6, 0, 0, 12, 12 }},	/* -5   12  27     34  */
-	{    0,  0, 12, { -3, 6, 0, 0, 12, 12 }},	/*  0   12  27     39  */
-	{   50,  5, 12, { -3, 6, 0, 0, 12, 12 }},	/*  5   12  27     44  */
-	{  100, 10, 12, { -3, 6, 0, 0, 12, 12 }},	/* 10   12  27     49  */
-	{  150, 15, 12, { -3, 6, 0, 0, 12, 12 }},	/* 15   12  27     54  */
-	{  200, 20, 12, { -3, 6, 0, 0, 12, 12 }},	/* 20   12  27     59  */
-	{  250, 30, 12, { -3, 6, 0, 0, 12, 12 }},	/* 25   12  27     64  */
-};
-static const gaintable gain_table_mode_sensitivity[] =
-{												/* LNA Mixer IF  Total */
-	{ -250,  5,  4, { -3, 0, 0, 1, 6, 3 }},		/*  5    5   7     17  */
-	{ -200, 10,  4, { -3, 0, 0, 1, 6, 3 }},		/* 10    5   7     22  */
-	{ -150, 15,  4, { -3, 0, 0, 1, 6, 3 }},		/* 15    5   7     27  */
-	{ -100, 20,  4, { -3, 0, 0, 1, 6, 3 }},		/* 20    5   7     32  */
-	{  -50, 30,  4, { -3, 0, 0, 1, 6, 3 }},		/* 25    5   7     37  */
-	{    0, 30, 12, { -3, 0, 0, 2, 3, 3 }},		/* 25   12   5     42  */
-	{   50, 30, 12, { -3, 3, 0, 1, 6, 3 }},		/* 25   12  10     47  */
-	{  100, 30, 12, {  6, 0, 0, 0, 6, 3 }},		/* 25   12  15     52  */
-	{  150, 30, 12, {  6, 0, 0, 2, 9, 3 }},		/* 25   12  20     57  */
-	{  200, 30, 12, {  6, 3, 0, 1, 9, 6 }},		/* 25   12  25     62  */
-	{  250, 30, 12, {  6, 6, 0, 0, 9, 9 }},		/* 25   12  30     67  */
-};
-#endif		//	defined( CORRECT_FOR_DEFAULT_IFGAIN )
-
-static int tuner_gain_table_linearity[ ARRAY_SIZE( gain_table_mode_linearity )];
-static int tuner_gain_table_sensitivity[ ARRAY_SIZE( gain_table_mode_sensitivity )];
-
-int e4kTuner::e4k_set_lna_mixer_if_gain( int32_t gain )
+int e4kTuner::e4k_set_lna_mixer_if_gain( int16_t gain )
 {
 	const struct gain_table_mode_struct * gain_table;
 	int gain_table_len;
@@ -983,7 +1014,7 @@ int e4kTuner::e4k_set_lna_mixer_if_gain( int32_t gain )
 		if ( gain_table->gain == gain )
 		{
 			int l;
-			e4k_set_lna_gain( gain_table->LNA_gain * 10 );
+			e4k_set_lna_gain( gain_table->LNA_gain );
 			e4k_mixer_gain_set( gain_table->mixer_gain );
 			for ( l = 0; l < 6 ; l++ )
 				e4k_if_gain_set( l + 1, gain_table->IF_gain[ l ]);
@@ -1064,27 +1095,18 @@ int e4kTuner::e4k_enable_manual_gain( uint8_t mode )
 		gain_mode = mode;
 
 #if 1	// JD change
-		if ( gain_mode == GAIN_MODE_MANUAL )
-		{
-			/* Select if moderate gain levels */
-			e4k_if_gain_set( 1, 6 );
-			e4k_if_gain_set( 2, 0 );
-			e4k_if_gain_set( 3, 0 );
-			e4k_if_gain_set( 4, 0 );
-			e4k_if_gain_set( 5, 9 );
-			e4k_if_gain_set( 6, 9 );
-		}
+		e4k_reg_set_mask( E4K_REG_AGC11, 0x7, 5 );	// enable 2
 #endif
 
-		if ( gain_mode > MAX_E4K_GAIN_MODES )
-			gain_mode = MAX_E4K_GAIN_MODES;
+		if ( gain_mode > MAX_TUNER_GAIN_MODES )
+			gain_mode = GAIN_MODE_MANUAL;
 		if ( gain_mode > GAIN_MODE_MANUAL)
 			return gain_mode;
 		return 0; /* compatibility to old mode API */
 	}
 	else
 	{
-		gain_mode=GAIN_MODE_AGC;
+		gain_mode = GAIN_MODE_AGC;
 		/* Set LNA mode to auto */
 		e4k_reg_set_mask( E4K_REG_AGC1, E4K_AGC1_MOD_MASK, E4K_AGC_MOD_IF_SERIAL_LNA_AUTON );
 		/* Set Mixer Gain Control to auto */
@@ -1092,22 +1114,16 @@ int e4kTuner::e4k_enable_manual_gain( uint8_t mode )
 
 		e4k_reg_set_mask( E4K_REG_AGC11, 0x7, 0 );
 #if 1	// JD change
-		/* Select if moderate gain levels */
-		e4k_if_gain_set( 1, 6 );
-		e4k_if_gain_set( 2, 0 );
-		e4k_if_gain_set( 3, 0 );
-		e4k_if_gain_set( 4, 0 );
-		e4k_if_gain_set( 5, 9 );
-		e4k_if_gain_set( 6, 9 );
+		set_default_if_gains();
 #endif
 	}
 
 	return 0;
 }
 
-int e4kTuner::find_stage_gain( uint8_t stage, int8_t val )
+int e4kTuner::find_stage_gain( uint8_t stage, int16_t val )
 {
-	const int8_t *arr;
+	const int16_t *arr;
 	int i;
 
 	if ( stage >= ARRAY_SIZE( if_stage_gain ))
@@ -1129,40 +1145,56 @@ int e4kTuner::find_stage_gain( uint8_t stage, int8_t val )
  *  \param [value] gain value in dB
  *  \returns 0 on success, negative in case of error
  */
-int e4kTuner::e4k_if_gain_set( uint8_t stage, int8_t value )
+int e4kTuner::e4k_if_gain_set( int8_t stage, int16_t gain )
 {
+	if (( gain % 10 ) != 0 )
+		gain = gain;
 	int rc;
 	uint8_t mask;
 	const struct reg_field *field;
 
-	rc = find_stage_gain( stage, value );
+	rc = find_stage_gain( stage, gain );
 	if ( rc < 0 )
+	{
+		TRACE( "FAILED: (read) e4k_if_gain_set( %d, %d )\n", stage, gain );
 		return rc;
+	}
 
 	/* compute the bit-mask for the given gain field */
 	field = &if_stage_gain_regs[ stage ];
 	mask = width2mask[ field->width ] << field->shift;
 
-	return e4k_reg_set_mask( field->reg, mask, rc << field->shift );
+	rc = e4k_reg_set_mask( field->reg, mask, rc << field->shift );
+	if ( rc >=0 )
+	{
+		stagegains[ stage + 1 ] = gain;
+	}
+	else
+		TRACE( "FAILED: (reg_set_mask) e4k_reg_set_mask failed %d\n", rc );
+
+	return rc;
 }
 
-int e4kTuner::e4k_mixer_gain_set( int8_t value )
+int e4kTuner::e4k_mixer_gain_set( int16_t gain )
 {
 	uint8_t bit;
 
-	switch ( value )
+	switch ( gain )
 	{
-	case 4:
+	case 40:
 		bit = 0;
 		break;
-	case 12:
+	case 120:
 		bit = 1;
 		break;
 	default:
 		return -EINVAL;
 	}
 
-	return e4k_reg_set_mask( E4K_REG_GAIN2, 1, bit );
+	int rc = e4k_reg_set_mask( E4K_REG_GAIN2, 1, bit );
+	if ( rc >= 0 )
+		stagegains[ 1 ] = gain;
+	return rc;
 }
 
 int e4kTuner::get_tuner_stage_gains( uint8_t stage, const int32_t **gains, const char **description)
@@ -1205,15 +1237,34 @@ int e4kTuner::get_tuner_stage_gains( uint8_t stage, const int32_t **gains, const
 	return 0;
 }
 
-int e4kTuner::set_tuner_stage_gain( uint8_t stage, int32_t gain)
+int e4kTuner::get_tuner_stage_gain( uint8_t stage )
 {
-	if ( stage == 0 )
-		return e4k_set_lna_gain( gain );
-	else
-	if ( stage == 1 )
-		return e4k_mixer_gain_set( gain / 10 );
-	else
-		return e4k_if_gain_set( stage - 2, gain );
+	if ( stage < 8 )
+		return stagegains[ stage ];
+	return 0;
+}
+
+int e4kTuner::set_tuner_stage_gain( uint8_t stage, int gain)
+{
+	int rc = -10;
+	switch( stage )
+	{
+	case 0:
+		rc = e4k_set_lna_gain( gain );
+		break;
+	case 1:
+		rc = e4k_mixer_gain_set( gain );
+		break;
+	case 2:
+	case 3:
+	case 4:
+	case 5:
+	case 6:
+	case 7:
+		rc = e4k_if_gain_set( stage - 1, gain );
+		break;
+	}
+	return 0;
 }
 
 int e4kTuner::e4k_commonmode_set( int8_t value )
@@ -1440,12 +1491,7 @@ int e4kTuner::e4k_init( void )
 	e4k_enable_manual_gain( 0 );
 
 	/* Select moderate gain levels */
-	e4k_if_gain_set( 1, 6 );
-	e4k_if_gain_set( 2, 0 );
-	e4k_if_gain_set( 3, 0 );
-	e4k_if_gain_set( 4, 0 );
-	e4k_if_gain_set( 5, 9 );
-	e4k_if_gain_set( 6, 9 );
+	set_default_if_gains();
 
 	/* Set the most narrow filter we can possibly use */
 	e4k_if_filter_bw_set( E4K_IF_FILTER_MIX, KHZ( 1900 ));
@@ -1462,4 +1508,21 @@ int e4kTuner::e4k_init( void )
 	compute_gain_table();
 
 	return 0;
+}
+
+void e4kTuner::set_default_if_gains( void )
+{
+	/* Select if moderate gain levels */
+	e4k_if_gain_set( 1, 60 );
+	e4k_if_gain_set( 2, 0 );
+	e4k_if_gain_set( 3, 0 );
+	e4k_if_gain_set( 4, 0 );
+	e4k_if_gain_set( 5, 90 );
+	e4k_if_gain_set( 6, 90 );
+	stagegains[ 2 ] = 60;
+	stagegains[ 3 ] = 0;
+	stagegains[ 4 ] = 0;
+	stagegains[ 5 ] = 0;
+	stagegains[ 6 ] = 90;
+	stagegains[ 7 ] = 90;
 }
