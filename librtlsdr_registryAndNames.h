@@ -3,10 +3,8 @@
 //	NB. This is meant to be included in librtlsdr.h as part of the
 //	rtlsdr class. It's broken out this way for over all clarity.
 
-#define EEPROM_SIZE		256
 #define MAX_STR_SIZE	256
 
-typedef uint8_t eepromdata[ 256 ];
 typedef uint8_t usbportnums[ MAX_USB_PATH ];
 
 protected:	//	Static functions		Dongle array handling

@@ -1722,3 +1722,17 @@ void rtlsdr::GetCatalog( void )
 	}
 	goodCatalog = true;
 }
+
+
+extern "C"
+{
+	SDRDAPI IRtlSdr* CreateRtlSdr()
+	{
+		return new rtlsdr;
+	}
+
+	SDRDAPI void DeleteRtlSdr( IRtlSdr* me)
+	{
+		delete (rtlsdr*) me;
+	}
+}

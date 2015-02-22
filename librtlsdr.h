@@ -10,6 +10,7 @@
 #include "DongleArrays.h"
 #include "Recognized Dongles.h"
 #include "MyMutex.h"
+#include "IRtlSdr.h"
 
 #define FIR_LEN 16
 class e4kTuner;
@@ -21,7 +22,7 @@ class r82xxTuner;
 //	Stages is a private mode to emphasize per stage control.
 #define MAX_TUNER_GAIN_MODES GAIN_MODE_STAGES
 
-class /*SDRDAPI */ rtlsdr // : public rtlsdr_dongle_comms
+class /*SDRDAPI */ rtlsdr : public IRtlSdr
 {
 public:
 	rtlsdr									();
@@ -103,7 +104,18 @@ public:
 	int			rtlsdr_set_offset_tuning	( int on );
 	int			rtlsdr_get_offset_tuning	( void );
 	int			rtlsdr_set_dithering		( int dither );
-	int			rtlsdr_get_tuner_type		( int index );
+//	int			rtlsdr_get_tuner_type		( int index );
+	int			rtlsdr_open					( uint32_t index );
+	int			rtlsdr_close				( void );
+	uint32_t	rtlsdr_get_tuner_clock		( void );
+	int			rtlsdr_get_usb_strings		( char *manufact
+											, char *product
+											, char *serial
+											);
+	int			rtlsdr_get_usb_strings		( CString& manufact
+											, CString& product
+											, CString& serial
+											);
 
 public:
 	// Static functions
@@ -118,18 +130,7 @@ public:
 											);
 	static int	rtlsdr_get_index_by_serial	( const char *serial );
 	// Non-static public functions
-	int			rtlsdr_open					( uint32_t index );
-	int			rtlsdr_close				( void );
-	uint32_t	rtlsdr_get_tuner_clock		( void );
 	static int	rtlsdr_static_get_tuner_type( int index );
-	int			rtlsdr_get_usb_strings		( char *manufact
-											, char *product
-											, char *serial
-											);
-	int			rtlsdr_get_usb_strings		( CString& manufact
-											, CString& product
-											, CString& serial
-											);
 
 protected:
 	static void	GetCatalog					( void );
