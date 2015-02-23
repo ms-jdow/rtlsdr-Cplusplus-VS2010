@@ -381,7 +381,7 @@ int rtlsdr::rtlsdr_get_usb_strings( CString& manufact
 
 int rtlsdr::rtlsdr_write_eeprom( uint8_t *data, uint8_t offset, uint16_t len )
 {
-	if (( !devh ) || (( offset + len ) >= EEPROM_SIZE ))
+	if (( !devh ) || (( offset + len ) > EEPROM_SIZE ))
 		return -1;
 	//	Parse the eeprom to see if it is "real"
 	//	Find it in the Dongles list.
