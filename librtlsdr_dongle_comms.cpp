@@ -334,7 +334,7 @@ void rtlsdr::rtlsdr_set_i2c_repeater( int on )
 	if ( on == i2c_repeater_on )
 		return;
 	if ( on == -1 )
-		i2c_repeater_on = 0;
+		on = 0;
 	else
 		on = !!on; /* values +2 to force on */
 	i2c_repeater_on = on;
