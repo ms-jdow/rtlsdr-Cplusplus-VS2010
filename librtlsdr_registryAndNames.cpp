@@ -604,8 +604,13 @@ int rtlsdr::SafeFindDongle( const Dongle& tdongle )
 }
 
 
-// STATIC //
 int rtlsdr::rtlsdr_get_index_by_serial( const char *serial )
+{
+	return srtlsdr_get_index_by_serial( serial );
+}
+
+// STATIC //
+int rtlsdr::srtlsdr_get_index_by_serial( const char *serial )
 {
 	int i;
 	int cnt;
@@ -615,7 +620,7 @@ int rtlsdr::rtlsdr_get_index_by_serial( const char *serial )
 	if ( !serial )
 		return -1;
 
-	cnt = rtlsdr_get_device_count();
+	cnt = srtlsdr_get_device_count();
 
 	if ( !cnt )
 		return -2;
@@ -624,7 +629,7 @@ int rtlsdr::rtlsdr_get_index_by_serial( const char *serial )
 
 	for ( i = 0; i < cnt; i++ )
 	{
-		r = rtlsdr_get_device_usb_strings( i, NULL, NULL, str );
+		r = srtlsdr_get_device_usb_strings( i, NULL, NULL, str );
 		if (( r == 0 ) && (strcmp( serial, str ) == 0 ))
 			return i;
 	}

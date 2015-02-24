@@ -78,33 +78,6 @@ BOOL rtlsdr_app::InitInstance()
 	HERE();
 	CWinApp::InitInstance();
 
-	if ( RtlSdrVersionString.IsEmpty() && 0)
-	{
-		TCHAR me[ _MAX_PATH ];
-		::GetModuleFileName( m_hInstance, me, _MAX_PATH );
-
-		int size = ::GetFileVersionInfoSize( me, NULL );
-		BYTE *vinfo = new BYTE[ size ];
-		memset( vinfo, 0, sizeof( vinfo ));
-		if ( vinfo != NULL )
-		{
-			if ( ::GetFileVersionInfo( me, NULL, size, vinfo ) != 0 )
-			{
-				VS_FIXEDFILEINFO *ffinfo;
-				UINT ffinfosize = sizeof( VS_FIXEDFILEINFO );
-				BOOL ret = VerQueryValue( vinfo, _T( "\\" ), (LPVOID*)&ffinfo, &ffinfosize );
-				WORD verhi = HIWORD( ffinfo->dwFileVersionMS );
-				WORD verlo = LOWORD( ffinfo->dwFileVersionMS );
-				WORD revhi = HIWORD( ffinfo->dwFileVersionLS );
-				WORD revlo = LOWORD( ffinfo->dwFileVersionLS );
-				//	And so forth
-				RtlSdrVersionString.Format( "%d.%d.%d.%d", verhi, verlo, revhi, revlo );
-			}
-			else
-				TRACE( "Last error %d\n", GetLastError());
-			delete vinfo;
-		}
-	}
 	HERE();
  	return true;
 }
@@ -216,13 +189,13 @@ static void CloseSdrDongle( rtlsdr* dongle )
 RTLSDR_API uint32_t rtlsdr_get_device_count( void )
 {
 	HERE();
-	return rtlsdr::rtlsdr_get_device_count();
+	return rtlsdr::srtlsdr_get_device_count();
 }
 
 RTLSDR_API const char* rtlsdr_get_device_name( uint32_t index )
 {
 	HERE();
-	return rtlsdr::rtlsdr_get_device_name( index );
+	return rtlsdr::srtlsdr_get_device_name( index );
 }
 
 RTLSDR_API int rtlsdr_get_device_usb_strings( uint32_t index
@@ -232,17 +205,17 @@ RTLSDR_API int rtlsdr_get_device_usb_strings( uint32_t index
 											)
 {
 	HERE();
-	return rtlsdr::rtlsdr_get_device_usb_strings( index
-												, manufact
-												, product
-												, serial
-												);
+	return rtlsdr::srtlsdr_get_device_usb_strings( index
+												 , manufact
+												 , product
+												 , serial
+												 );
 }
 
 RTLSDR_API int rtlsdr_get_index_by_serial(const char *serial)
 {
 	HERE();
-	return rtlsdr::rtlsdr_get_index_by_serial( serial );
+	return rtlsdr::srtlsdr_get_index_by_serial( serial );
 }
 
 RTLSDR_API int rtlsdr_open( rtlsdr_dev_t **dev, uint32_t index )
@@ -592,68 +565,11 @@ RTLSDR_API int rtlsdr_cancel_async(rtlsdr_dev_t *dev)
 RTLSDR_API const char* rtlsdr_get_version( void )
 {
 	HERE();
-	if ( RtlSdrVersionString.IsEmpty())
-	{
-		rtlsdr_get_version_int64();
-	}
-	return RtlSdrVersionString;
+	return rtlsdr::srtlsdr_get_version();
 }
 
 RTLSDR_API unsigned __int64 rtlsdr_get_version_int64( void )
 {
 	HERE();
-	if ( RtlSdrVersionString.IsEmpty())
-	{
-		CString work;
-		TCHAR *me = work.GetBuffer( _MAX_PATH );
-		::GetModuleFileName( NULL, me, _MAX_PATH );
-		work.ReleaseBuffer();
-		if ( work.IsEmpty())
-		{
-			RtlSdrVersionString = "We don't exist?";
-			return 0;		//	We don't really exist! (out of memory)
-		}
-		int loc = work.ReverseFind( _T( '\\' ));
-		if ( loc < 0 )
-		{
-			RtlSdrVersionString = "Can't find SDRConsole";
-			return 0;		//	We're confused.
-		}
-
-		work = work.Left( loc ) + _T( "\\rtlsdr.dll" );
-
-
-		int size = ::GetFileVersionInfoSize( work, NULL );
-		BYTE *vinfo = new BYTE[ size ];
-		memset( vinfo, 0, sizeof( vinfo ));
-		if ( vinfo != NULL )
-		{
-			if ( ::GetFileVersionInfo( work, NULL, size, vinfo ) != 0 )
-			{
-				VS_FIXEDFILEINFO *ffinfo;
-				UINT ffinfosize = sizeof( VS_FIXEDFILEINFO );
-				BOOL ret = VerQueryValue( vinfo, _T( "\\" ), (LPVOID*)&ffinfo, &ffinfosize );
-
-				WORD verhi = HIWORD( ffinfo->dwFileVersionMS );
-				WORD verlo = LOWORD( ffinfo->dwFileVersionMS );
-				WORD revhi = HIWORD( ffinfo->dwFileVersionLS );
-				WORD revlo = LOWORD( ffinfo->dwFileVersionLS );
-
-				RtlSdrVersionString.Format( "%u.%u.%u.%u", verhi, verlo, revhi, revlo );
-				delete vinfo;
-				return (((unsigned __int64)verhi ) << 48 )
-					   | (((unsigned __int64)verlo ) << 32 )
-					   | (((unsigned __int64)revhi ) << 16 )
-					   | (unsigned __int64)revlo;
-			}
-			else
-			{
-				TRACE( "Last error %d\n", GetLastError());
-				delete vinfo;
-				return 0;
-			}
-		}
-		return 0;
-	}
-	return 0;
+	return rtlsdr::srtlsdr_get_version_int64();
 }

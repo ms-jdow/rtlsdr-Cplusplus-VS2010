@@ -124,4 +124,22 @@ public:
 											) PURE;
 	virtual
 	int			rtlsdr_cancel_async			( void ) PURE;
+	virtual
+	const char* rtlsdr_get_version			( void ) PURE;
+	virtual
+	unsigned __int64 
+				rtlsdr_get_version_int64	( void ) PURE;
+	virtual
+	uint32_t	rtlsdr_get_device_count		( void ) PURE;
+	virtual
+	const char *rtlsdr_get_device_name		( uint32_t index ) PURE;
+	virtual
+	int			rtlsdr_get_device_usb_strings
+											( uint32_t index
+											, char *manufact
+											, char *product
+											, char *serial
+											) PURE;
+	virtual
+	int			rtlsdr_get_index_by_serial	( const char *serial ) PURE;
 };

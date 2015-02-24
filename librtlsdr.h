@@ -116,19 +116,30 @@ public:
 											, CString& product
 											, CString& serial
 											);
-
-public:
-	// Static functions
-	static uint32_t	rtlsdr_get_device_count	( void );
-	static const char *
-					rtlsdr_get_device_name	( uint32_t index );
-	static int		rtlsdr_get_device_usb_strings
+	uint32_t	rtlsdr_get_device_count		( void );
+	const char *rtlsdr_get_device_name		( uint32_t index );
+	int			rtlsdr_get_device_usb_strings
 											( uint32_t index
 											, char *manufact
 											, char *product
 											, char *serial
 											);
-	static int	rtlsdr_get_index_by_serial	( const char *serial );
+	int			rtlsdr_get_index_by_serial	( const char *serial );
+
+	int			rtlsdr_get_tuner_type		( int index );
+
+public:
+	// Static functions
+	static uint32_t	srtlsdr_get_device_count( void );
+	static const char *
+					srtlsdr_get_device_name	( uint32_t index );
+	static int		srtlsdr_get_device_usb_strings
+											( uint32_t index
+											, char *manufact
+											, char *product
+											, char *serial
+											);
+	static int	srtlsdr_get_index_by_serial	( const char *serial );
 
 	static int	rtlsdr_static_get_tuner_type( int index );
 
@@ -163,4 +174,16 @@ private:
 	int										tuner_initialized;
 	int										spectrum_inversion;
 	static int								inReinitDongles;
+
+private:
+	static CStringA RtlSdrVersionString;
+public:
+	const char*	rtlsdr_get_version		( void );
+	static const char*
+				srtlsdr_get_version		( void );
+	unsigned __int64
+				rtlsdr_get_version_int64( void );
+	static unsigned __int64
+				srtlsdr_get_version_int64
+										( void );
 };

@@ -634,6 +634,12 @@ int rtlsdr::rtlsdr_get_tuner_type( void )
 	return tuner_type;
 }
 
+int rtlsdr::rtlsdr_get_tuner_type( int index )
+{
+	return rtlsdr_static_get_tuner_type( index );
+}
+
+//	STATIC
 int	rtlsdr::rtlsdr_static_get_tuner_type( int index )
 {
 	if ((DWORD) index < (DWORD) Dongles.GetSize())
@@ -1023,7 +1029,6 @@ int rtlsdr::rtlsdr_set_dithering( int dither )
 	return 1;
 }
 
-// STATIC //
 uint32_t rtlsdr::rtlsdr_get_device_count( void )
 {
 	GetCatalog();
@@ -1031,7 +1036,19 @@ uint32_t rtlsdr::rtlsdr_get_device_count( void )
 }
 
 // STATIC //
+uint32_t rtlsdr::srtlsdr_get_device_count( void )
+{
+	GetCatalog();
+	return (int) Dongles.GetSize();
+}
+
 const char *rtlsdr::rtlsdr_get_device_name( uint32_t index )
+{
+	return srtlsdr_get_device_name( index );
+}
+
+// STATIC //
+const char *rtlsdr::srtlsdr_get_device_name( uint32_t index )
 {
 	int i;
 	libusb_context *ctx;
@@ -1070,12 +1087,21 @@ const char *rtlsdr::rtlsdr_get_device_name( uint32_t index )
 		return "";
 }
 
-// STATIC //
 int rtlsdr::rtlsdr_get_device_usb_strings( uint32_t index
 										 , char *manufact
 										 , char *product
 										 , char *serial
 										 )
+{
+	return srtlsdr_get_device_usb_strings( index, manufact, product, serial );
+}
+
+// STATIC //
+int rtlsdr::srtlsdr_get_device_usb_strings( uint32_t index
+										  , char *manufact
+										  , char *product
+										  , char *serial
+										  )
 {
 	int r = -2;
 	const rtlsdr_dongle_t *device = NULL;
@@ -1722,6 +1748,87 @@ void rtlsdr::GetCatalog( void )
 	}
 	goodCatalog = true;
 }
+
+CStringA rtlsdr::RtlSdrVersionString;
+
+const char* rtlsdr::rtlsdr_get_version( void )
+{
+	return srtlsdr_get_version();
+}
+
+const char* rtlsdr::srtlsdr_get_version( void )
+{
+	if ( RtlSdrVersionString.IsEmpty())
+	{
+		srtlsdr_get_version_int64();
+	}
+	return RtlSdrVersionString;
+}
+
+unsigned __int64 rtlsdr::rtlsdr_get_version_int64( void )
+{
+	return srtlsdr_get_version_int64();
+}
+
+unsigned __int64 rtlsdr::srtlsdr_get_version_int64( void )
+{
+	if ( RtlSdrVersionString.IsEmpty())
+	{
+		CString work;
+		TCHAR *me = work.GetBuffer( _MAX_PATH );
+		::GetModuleFileName( NULL, me, _MAX_PATH );
+		work.ReleaseBuffer();
+		if ( work.IsEmpty())
+		{
+			RtlSdrVersionString = "We don't exist?";
+			return 0;		//	We don't really exist! (out of memory)
+		}
+		int loc = work.ReverseFind( _T( '\\' ));
+		if ( loc < 0 )
+		{
+			RtlSdrVersionString = "Can't find SDRConsole";
+			return 0;		//	We're confused.
+		}
+
+		work = work.Left( loc ) + _T( "\\rtlsdr.dll" );
+
+
+		int size = ::GetFileVersionInfoSize( work, NULL );
+		BYTE *vinfo = new BYTE[ size ];
+		memset( vinfo, 0, sizeof( vinfo ));
+		if ( vinfo != NULL )
+		{
+			if ( ::GetFileVersionInfo( work, NULL, size, vinfo ) != 0 )
+			{
+				VS_FIXEDFILEINFO *ffinfo;
+				UINT ffinfosize = sizeof( VS_FIXEDFILEINFO );
+				BOOL ret = VerQueryValue( vinfo, _T( "\\" ), (LPVOID*)&ffinfo, &ffinfosize );
+
+				WORD verhi = HIWORD( ffinfo->dwFileVersionMS );
+				WORD verlo = LOWORD( ffinfo->dwFileVersionMS );
+				WORD revhi = HIWORD( ffinfo->dwFileVersionLS );
+				WORD revlo = LOWORD( ffinfo->dwFileVersionLS );
+
+				RtlSdrVersionString.Format( "%u.%u.%u.%u", verhi, verlo, revhi, revlo );
+				delete vinfo;
+				return (((unsigned __int64)verhi ) << 48 )
+					   | (((unsigned __int64)verlo ) << 32 )
+					   | (((unsigned __int64)revhi ) << 16 )
+					   | (unsigned __int64)revlo;
+			}
+			else
+			{
+				TRACE( "Last error %d\n", GetLastError());
+				delete vinfo;
+				return 0;
+			}
+		}
+		return 0;
+	}
+	return 0;
+}
+
+
 
 
 extern "C"
