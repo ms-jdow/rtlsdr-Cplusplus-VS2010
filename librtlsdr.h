@@ -129,7 +129,7 @@ public:
 											, char *serial
 											);
 	static int	rtlsdr_get_index_by_serial	( const char *serial );
-	// Non-static public functions
+
 	static int	rtlsdr_static_get_tuner_type( int index );
 
 protected:

@@ -106,10 +106,10 @@ public:		//	Read and write bulk transfers
 										, uint32_t buf_len
 										);
 	int			rtlsdr_cancel_async		( void );
-	void		rtlsdr_init_baseband	( void );
-	int			rtlsdr_deinit_baseband	( void );
 
 protected:	//	Read and write bulk transfers
+	void		rtlsdr_init_baseband	( void );
+	int			rtlsdr_deinit_baseband	( void );
 	int			rtlsdr_alloc_async_buffers
 										( void );
 	int			rtlsdr_free_async_buffers
