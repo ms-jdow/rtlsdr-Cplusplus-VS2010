@@ -1439,6 +1439,10 @@ found:
 	r = tuner->init( this );
 	tuner_initialized = 1;
 
+	//	Make sure this is initialized in the dongles. There is a
+	//	path that skips this if the right commands are not issued.
+	tuner->set_xtal_frequency( rtl_xtal );
+
 	rtlsdr_set_i2c_repeater( 0 );
 
 	//	dd is still valid from way above.
