@@ -1115,20 +1115,13 @@ int rtlsdr::srtlsdr_get_device_usb_strings( uint32_t index
 			CMutexLock cml( dongle_mutex );
 			Dongle* dongle = NULL;
 			int tindex = 0;
-			for( INT_PTR i = 0; i < Dongles.GetSize(); i++ )
-			{
-				if ( Dongles[ i ].found == index )
-				{
-					dongle = &Dongles[ i ];
-				}
-			}
 			dongle = &Dongles[ index ];
 			if ( dongle )
 			{
 				CStringA t;
 				if ( manufact )
 				{
-					if ( dongle->busy )
+					if ( test_busy( index ))
 						t = "* ";
 					t += dongle->manfIdCStr;
 					strncpy_s( manufact, 256, t, 256 );
@@ -1174,6 +1167,57 @@ int rtlsdr::srtlsdr_get_device_usb_strings( uint32_t index
 	}
 
 	return r;
+}
+
+/* STATIC */
+bool rtlsdr::test_busy( uint32_t index )
+{
+	int r;
+	libusb_device *device = NULL;
+	struct libusb_device_descriptor dd;
+	libusb_device_handle * ldevh = NULL;
+	libusb_context * ctx = NULL;
+
+	libusb_device **list;
+
+	int err = libusb_init( &ctx );
+
+	ssize_t cnt = libusb_get_device_list( ctx, &list);
+
+	for ( int i = 0; i < cnt; i++ )
+	{
+		device = list[ i ];
+
+		libusb_get_device_descriptor( list[ i ], &dd );
+
+		if ( find_known_device( dd.idVendor, dd.idProduct ))
+		{
+			BYTE portnums[ MAX_USB_PATH ] = { 0 };
+			int portcnt = libusb_get_port_numbers( list[ i ], portnums, MAX_USB_PATH );
+			if ( portcnt > 0 )
+			{
+				if ( memcmp( portnums, &Dongles[ index ].usbpath, portcnt ) == 0 )
+					break;
+			}
+		}
+
+		device = NULL;
+	}
+
+	if ( !device )
+	{
+		r = -1;
+		return true;
+	}
+
+	r = libusb_open( device, &ldevh );
+	libusb_free_device_list( list, 1 );
+	if ( r < 0 )
+		return true;		// Is busy.
+
+	libusb_close( ldevh );
+	libusb_exit( ctx );
+	return false;
 }
 
 int rtlsdr::basic_open( uint32_t index
@@ -1462,7 +1506,7 @@ found:
 #if 1 || defined( PORT_PATH_WORKS_PORTNUMS_DOESNT )
 	//	This works for X64 even though it's deprecated.
 	cnt = libusb_get_port_path( ctx
-							  ,  libusb_get_device( devh )
+							  , libusb_get_device( devh )
 							  , portnums
 							  , MAX_USB_PATH
 							  );

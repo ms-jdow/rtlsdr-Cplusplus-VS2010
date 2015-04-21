@@ -41,6 +41,7 @@ protected:
 #include "librtlsdr_dongle_comms.h"
 
 protected:	// The real work.
+	static bool	test_busy					( uint32_t index );
 	int			basic_open					( uint32_t index
 											, struct libusb_device_descriptor *out_dd
 											);
