@@ -394,7 +394,7 @@ const char* rtlsdr::find_requested_dongle_name( libusb_context *ctx
 	const rtlsdr_dongle_t *dongle = NULL;
 	static CStringA donglename;
 
-	uint32_t cnt = libusb_get_device_list( ctx, &list );
+	uint32_t cnt = (uint32_t) libusb_get_device_list( ctx, &list );
 
 	for ( uint32_t i = 0; i < cnt; i++ )
 	{
@@ -450,7 +450,7 @@ int rtlsdr::open_requested_device( libusb_context *ctx
 	libusb_device *device = NULL;
 	int r = -1;
 
-	uint32_t cnt = libusb_get_device_list( ctx, &list );
+	uint32_t cnt = (uint32_t) libusb_get_device_list( ctx, &list );
 
 	for ( uint32_t i = 0; i < cnt; i++ )
 	{
