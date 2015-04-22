@@ -31,6 +31,16 @@ protected:	//	Static functions		Registry handling
 				find_known_device		( uint16_t vid
 										, uint16_t pid
 										);
+	static const char*
+				find_requested_dongle_name
+										( libusb_context *ctx
+										, uint32_t index
+										);
+	static int	open_requested_device	( libusb_context *ctx
+										, uint32_t index
+										, libusb_device_handle **ldevh
+										);
+
 	static int	GetDongleIndexFromNames	( const char * manufact
 										, const char * product
 										, const char * serial

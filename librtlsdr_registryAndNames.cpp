@@ -384,6 +384,117 @@ void rtlsdr::mergeToMaster( Dongle& tempd, int index )
 }
 
 
+// STATIC //
+const char* rtlsdr::find_requested_dongle_name( libusb_context *ctx
+											  , uint32_t index
+											  )
+{
+	libusb_device **list;
+	struct libusb_device_descriptor dd;
+	const rtlsdr_dongle_t *dongle = NULL;
+	static CStringA donglename;
+
+	uint32_t cnt = libusb_get_device_list( ctx, &list );
+
+	for ( uint32_t i = 0; i < cnt; i++ )
+	{
+		libusb_get_device_descriptor( list[ i ], &dd );
+
+		dongle = find_known_device( dd.idVendor, dd.idProduct );
+
+		if ( dongle )
+		{
+			BYTE portnums[ MAX_USB_PATH ] = { 0 };
+			int portcnt = libusb_get_port_numbers( list[ i ], portnums, MAX_USB_PATH );
+			if ( portcnt > 0 )
+			{
+				if ( memcmp( portnums, &Dongles[ index ].usbpath, portcnt ) == 0 )
+					break;
+			}
+		}
+		dongle = NULL;
+	}
+
+	libusb_free_device_list( list, 1 );
+	bool busy = false;
+	if ( dongle == NULL )
+	{
+		busy = true;
+		if (( INT_PTR ) index < Dongles.GetSize())
+		{
+			//	Hail Mary - and figure the dongle is busy.
+			dongle = find_known_device( Dongles[ index ].vid, Dongles[ index ].pid );
+		}
+		if ( dongle == NULL )
+			return "";
+	}
+
+	if ( busy || test_busy( index ))
+	{
+		TRACE( "Dongle %d is busy or not present\n", index );
+		donglename.Format( "* %s", dongle->name );
+		return donglename;
+	}
+	return dongle->name;
+}
+
+
+// STATIC //
+int rtlsdr::open_requested_device( libusb_context *ctx
+								 , uint32_t index
+								 , libusb_device_handle **ldevh
+								 )
+{
+	libusb_device **list;
+	struct libusb_device_descriptor dd;
+	libusb_device *device = NULL;
+	int r = -1;
+
+	uint32_t cnt = libusb_get_device_list( ctx, &list );
+
+	for ( uint32_t i = 0; i < cnt; i++ )
+	{
+		device = list[ i ];
+		libusb_get_device_descriptor( list[ i ], &dd );
+
+		if ( find_known_device( dd.idVendor, dd.idProduct ) )
+		{
+			BYTE portnums[ MAX_USB_PATH ] = { 0 };
+			int portcnt = libusb_get_port_numbers( list[ i ], portnums, MAX_USB_PATH );
+			if ( portcnt > 0 )
+			{
+				if ( memcmp( portnums, &Dongles[ index ].usbpath, portcnt ) == 0 )
+					break;
+			}
+		}
+		device = NULL;
+	}
+
+	if ( device )
+	{
+		r = libusb_open( device, ldevh );
+		if ( r < 0 )
+		{
+			ldevh = NULL;
+			fprintf( stderr, "usb_open error %d\n", r );
+			TRACE( "usb_open error %d\n", r );
+			if ( r == LIBUSB_ERROR_ACCESS )
+			{
+				fprintf(stderr, "Please fix the device permissions, e.g. "
+								"by installing the udev rules file rtl-sdr.rules\n");
+				TRACE( "Please fix the device permissions, e.g. "
+					   "by installing the udev rules file rtl-sdr.rules\n");
+			}
+		}
+	}
+
+	//	This must be done after the call.
+	libusb_free_device_list( list, 1 );
+
+	return r;
+}
+
+// STATIC //
 const rtlsdr_dongle_t * rtlsdr::find_known_device( uint16_t vid
 												 , uint16_t pid
 												 )
@@ -593,12 +704,12 @@ int rtlsdr::SafeFindDongle( const Dongle& tdongle )
 		//	Make sure the dongle we're testing is marked not busy.
 		bool donglebusy = Dongles[ entry ].busy;
 		Dongles[ entry ].busy = false;
-		if ( tdongle == Dongles[ entry ])
+		bool busy = tdongle == Dongles[ entry ];
+		Dongles[ entry ].busy = donglebusy;
+		if ( busy )
 		{
-			Dongles[ entry ].busy = donglebusy;
 			return entry;
 		}
-		Dongles[ entry ].busy = donglebusy;
 	}
 	return -1;
 }

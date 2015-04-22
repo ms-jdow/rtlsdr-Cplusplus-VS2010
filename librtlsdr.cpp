@@ -1050,41 +1050,14 @@ const char *rtlsdr::rtlsdr_get_device_name( uint32_t index )
 // STATIC //
 const char *rtlsdr::srtlsdr_get_device_name( uint32_t index )
 {
-	int i;
 	libusb_context *ctx;
-	libusb_device **list;
-	struct libusb_device_descriptor dd;
-	const rtlsdr_dongle_t *device = NULL;
-	uint32_t device_count = 0;
-	ssize_t cnt;
-
 	libusb_init( &ctx );
 
-	cnt = libusb_get_device_list( ctx, &list );
-
-	for ( i = 0; i < cnt; i++ )
-	{
-		libusb_get_device_descriptor( list[ i ], &dd );
-
-		device = find_known_device( dd.idVendor, dd.idProduct );
-
-		if ( device )
-		{
-			device_count++;
-
-			if ( index == device_count - 1 )
-				break;
-		}
-	}
-
-	libusb_free_device_list( list, 1 );
-
+	const char* name = find_requested_dongle_name( ctx, index );
+	
 	libusb_exit( ctx );
 
-	if ( device )
-		return device->name;
-	else
-		return "";
+	return name;
 }
 
 int rtlsdr::rtlsdr_get_device_usb_strings( uint32_t index
@@ -1173,51 +1146,16 @@ int rtlsdr::srtlsdr_get_device_usb_strings( uint32_t index
 bool rtlsdr::test_busy( uint32_t index )
 {
 	int r;
-	libusb_device *device = NULL;
-	struct libusb_device_descriptor dd;
 	libusb_device_handle * ldevh = NULL;
 	libusb_context * ctx = NULL;
 
-	libusb_device **list;
-
 	int err = libusb_init( &ctx );
 
-	ssize_t cnt = libusb_get_device_list( ctx, &list);
-
-	for ( int i = 0; i < cnt; i++ )
-	{
-		device = list[ i ];
-
-		libusb_get_device_descriptor( list[ i ], &dd );
-
-		if ( find_known_device( dd.idVendor, dd.idProduct ))
-		{
-			BYTE portnums[ MAX_USB_PATH ] = { 0 };
-			int portcnt = libusb_get_port_numbers( list[ i ], portnums, MAX_USB_PATH );
-			if ( portcnt > 0 )
-			{
-				if ( memcmp( portnums, &Dongles[ index ].usbpath, portcnt ) == 0 )
-					break;
-			}
-		}
-
-		device = NULL;
-	}
-
-	if ( !device )
-	{
-		r = -1;
-		return true;
-	}
-
-	r = libusb_open( device, &ldevh );
-	libusb_free_device_list( list, 1 );
-	if ( r < 0 )
-		return true;		// Is busy.
+	r = open_requested_device( ctx, index, &ldevh );
 
 	libusb_close( ldevh );
 	libusb_exit( ctx );
-	return false;
+	return r < 0;
 }
 
 int rtlsdr::basic_open( uint32_t index
@@ -1235,65 +1173,28 @@ int rtlsdr::basic_open( uint32_t index
 	struct libusb_device_descriptor dd;
 	libusb_device_handle * ldevh = NULL;
 
-	libusb_device **list;
-
 	libusb_init( &ctx );
 
 	dev_lost = 1;
 
-	ssize_t cnt = libusb_get_device_list( ctx, &list);
+	r = open_requested_device( ctx, index, &ldevh );
 
-	for ( int i = 0; i < cnt; i++ )
-	{
-		device = list[ i ];
-
-		libusb_get_device_descriptor( list[ i ], &dd );
-
-		if ( find_known_device( dd.idVendor, dd.idProduct ))
-		{
-			device_count++;
-		}
-
-		if ( index == device_count - 1 )
-			break;
-
-		device = NULL;
-	}
-
-	if ( !device )
-	{
-		r = -1;
-		goto err;
-	}
-
-	r = libusb_open( device, &ldevh );
 	if ( r < 0 )
-	{
-		libusb_free_device_list( list, 1 );
-		list = NULL;
-		fprintf( stderr, "usb_open error %d\n", r );
-		TRACE( "usb_open error %d\n", r );
-		if ( r == LIBUSB_ERROR_ACCESS )
-		{
-			fprintf(stderr, "Please fix the device permissions, e.g. "
-							"by installing the udev rules file rtl-sdr.rules\n");
-			TRACE( "Please fix the device permissions, e.g. "
-				   "by installing the udev rules file rtl-sdr.rules\n");
-		}
 		goto err;
-	}
 
 	if ( out_dd )
+	{
+		libusb_device* d = libusb_get_device( ldevh );
+
+		libusb_get_device_descriptor( d, &dd );
 		memcpy( out_dd, &dd, sizeof( struct libusb_device_descriptor ));
+	}
 
 	devh = ldevh;
 
 	r = claim_opened_device();
 
 err:
-	if ( list )
-		libusb_free_device_list( list, 1 );
-
 	return r;
 }
 
@@ -1489,7 +1390,8 @@ found:
 
 	rtlsdr_set_i2c_repeater( 0 );
 
-	//	dd is still valid from way above.
+	//	dd is still valid from way above.	// - no it isn't
+
 	dingle.vid = dd.idVendor;
 	dingle.pid = dd.idProduct;
 
