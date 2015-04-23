@@ -2,16 +2,45 @@ PLEASE PLEASE read me.
 
 Some history
 ============
-This version of rtlsdr.dll is rewritten, with considerable cut and paste, from Steve Markgraf's original distribution version source for rtlsdr.dll plus contributions from Oliver Jowette, Dimitri Stolnikov, 
-Kyle Keen, and others. It was redone in Visual Studio 2010 as a C++ project. Joanne Dow added the dongle memory facility as registry entries.
+This version of rtlsdr.dll is rewritten, with considerable cut and paste, from
+Steve Markgraf's original distribution version source for rtlsdr.dll plus
+contributions from Oliver Jowette, Dimitri Stolnikov, 
+Kyle Keen, and others.
+It was redone in Visual Studio 2010 as a C++ project. Joanne Dow added the dongle
+memory facility as registry entries.
 
 Source code is available on GitHub:
 	https://github.com/ms-jdow/rtlsdr-Cplusplus-VS2010
 
 User Notes
 ==========
-This version provides two significantly different behaviors visible to users. The first is a memory in the registry for all dongles seen such that they can appear in application drop lists even if busy. This makes the user experience less confusing. The second overcomes a "feature" of Microsoft's WinUSB.sys and libusb_1.0.dll in combination. When renaming dongles with the old versions of rtlsdr.dll you had to remove the dongle and replace it to make the rename stick. The technique used in the old dongles to read the dongle particulars actually read from cached values rather than the dongle itself. This version of rtlsdr.dll reads directly from the dongles if it deems the stored data to be stale.
+This version provides two significantly different behaviors visible to users.
 
-This second feature means that the first time you accecss a batch of dongles via this family of dlls after a long enough delay involves going off and reading data from each dongle. Unfortunately this can take awhile with this version. If you have a batch of dongles it can take several seconds before applications wake up. On the other hand, subsequent accesses within about 3 minutes are very fast as data cached in the Windows registry is considered valid and used instead of reading the dongle directly.
+The first is a memory in the registry for all dongles seen such that they can
+appear in application drop lists even if busy. This makes the user experience
+less confusing.
 
-With the correct SDRSharp.RTLUSB.dll (for SDRSharp) or SDRSourceRTL2832U.dll (for SDR-Radio) this DLL provides options for three stages of gain control direct access or three gain profiles for a unified gain control in addition to the registry based data caching.
+The second overcomes a "feature" of Microsoft's WinUSB.sys and libusb_1.0.dll
+in combination. When renaming dongles with the old versions of rtlsdr.dll you
+had to remove the dongle and replace it to make the rename stick. The technique
+used in the old dongles to read the dongle particulars actually read from cached
+values rather than the dongle itself. This version of rtlsdr.dll reads directly
+from the dongles if it deems the stored data to be stale.
+
+Note that all known dongles are shown all the time. Those which are busy or are
+not present are displayed with a leading asterisk. '*'. on the device name and
+the Vendor ID.
+
+Unfortunately, the second feature means that the first time you accecss a batch
+of dongles via this family of dlls after a long enough delay involves going off
+and reading data from each dongle. Unfortunately this can take awhile with this
+version. If you have a batch of dongles it can take several seconds before
+applications wake up. On the other hand, subsequent accesses within about 3
+minutes are very fast as data cached in the Windows registry is considered
+valid and used instead of reading the dongle directly.
+
+With the correct SDRSharp.RTLUSB.dll (for SDRSharp) or SDRSourceRTL2832U.dll
+(for SDR-Radio) this DLL provides options for three stages of gain control
+direct access or three gain profiles for a unified gain control in addition
+to the registry based data caching.
+
