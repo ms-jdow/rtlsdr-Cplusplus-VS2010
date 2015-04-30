@@ -1700,6 +1700,7 @@ void rtlsdr::GetCatalog( void )
 }
 
 CStringA rtlsdr::RtlSdrVersionString;
+__int64  rtlsdr::RtlSdrVersion64;
 
 const char* rtlsdr::rtlsdr_get_version( void )
 {
@@ -1724,6 +1725,7 @@ unsigned __int64 rtlsdr::srtlsdr_get_version_int64( void )
 {
 	if ( RtlSdrVersionString.IsEmpty())
 	{
+		RtlSdrVersion64 = 0;
 		CString work;
 		TCHAR *me = work.GetBuffer( _MAX_PATH );
 		::GetModuleFileName( NULL, me, _MAX_PATH );
@@ -1760,22 +1762,19 @@ unsigned __int64 rtlsdr::srtlsdr_get_version_int64( void )
 				WORD revlo = LOWORD( ffinfo->dwFileVersionLS );
 
 				RtlSdrVersionString.Format( "%u.%u.%u.%u", verhi, verlo, revhi, revlo );
-				delete vinfo;
-				return (((unsigned __int64)verhi ) << 48 )
-					   | (((unsigned __int64)verlo ) << 32 )
-					   | (((unsigned __int64)revhi ) << 16 )
-					   | (unsigned __int64)revlo;
+				RtlSdrVersion64 = (((unsigned __int64)verhi ) << 48 )
+								| (((unsigned __int64)verlo ) << 32 )
+								| (((unsigned __int64)revhi ) << 16 )
+								| (unsigned __int64)revlo;
 			}
 			else
 			{
 				TRACE( "Last error %d\n", GetLastError());
-				delete vinfo;
-				return 0;
 			}
+			delete vinfo;
 		}
-		return 0;
 	}
-	return 0;
+	return RtlSdrVersion64;
 }
 
 

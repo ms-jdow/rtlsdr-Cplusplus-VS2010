@@ -7,12 +7,8 @@
 
 #include "rtlsdr_app.h"
 
-#define HERE() \
-{ \
-/*	CStringA msg; \
-	msg.Format( "%s\n", __FUNCTION__ ); \
-	OutputDebugStringA( msg ); */\
-}
+#define HERE() __noop
+//{ CStringA msg; msg.Format( "%s\n", __FUNCTION__ ); OutputDebugStringA( msg ); }
 
 static CList< rtlsdr*, rtlsdr* > appdongles;
 

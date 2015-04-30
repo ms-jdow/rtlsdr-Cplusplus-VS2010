@@ -578,7 +578,7 @@ int rtlsdr::GetEepromString( const eepromdata& data
 	// Do this safely if the eeprom area is exactly full.
 	if ( string)
 	{
-		char* tdata = string->GetBuffer( 256 );
+		TCHAR* tdata = string->GetBuffer( 256 );
 		memset( tdata, 0, 256 );
 		for( int i = pos + 2; i < pos + size; i++ )
 		{

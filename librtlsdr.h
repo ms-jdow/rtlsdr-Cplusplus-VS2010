@@ -177,7 +177,9 @@ private:
 	static int								inReinitDongles;
 
 private:
-	static CStringA RtlSdrVersionString;
+	static CStringA							RtlSdrVersionString;
+	static __int64							RtlSdrVersion64;
+
 public:
 	const char*	rtlsdr_get_version		( void );
 	static const char*
