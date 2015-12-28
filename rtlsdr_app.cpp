@@ -7,10 +7,10 @@
 
 #include "rtlsdr_app.h"
 
-#define HERE() __noop
-//{ CStringA msg; msg.Format( "%s\n", __FUNCTION__ ); OutputDebugStringA( msg ); }
+#define HERE()	 __noop
+//#define HERE() { CStringA msg; msg.Format( "API: %s\n", __FUNCTION__ ); OutputDebugStringA( msg ); }
 
-static CList< rtlsdr*, rtlsdr* > appdongles;
+static CList< rtlsdr* > appdongles;
 
 //
 //TODO: If this DLL is dynamically linked against the MFC DLLs,
@@ -199,6 +199,20 @@ RTLSDR_API int rtlsdr_get_device_usb_strings( uint32_t index
 											, char *product
 											, char *serial
 											)
+{
+	HERE();
+	return rtlsdr::srtlsdr_get_device_usb_strings( index
+												 , manufact
+												 , product
+												 , serial
+												 );
+}
+
+RTLSDR_API int rtlsdr_get_device_usb_cstrings( uint32_t index
+											 , CString& manufact
+											 , CString& product
+											 , CString& serial
+											 )
 {
 	HERE();
 	return rtlsdr::srtlsdr_get_device_usb_strings( index
@@ -569,3 +583,4 @@ RTLSDR_API unsigned __int64 rtlsdr_get_version_int64( void )
 	HERE();
 	return rtlsdr::srtlsdr_get_version_int64();
 }
+

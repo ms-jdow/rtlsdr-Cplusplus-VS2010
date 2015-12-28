@@ -22,6 +22,8 @@ class r82xxTuner;
 //	Stages is a private mode to emphasize per stage control.
 #define MAX_TUNER_GAIN_MODES GAIN_MODE_STAGES
 
+#define STR_OFFSET	9	// EEPROM string offset.
+
 class /*SDRDAPI */ rtlsdr : public IRtlSdr
 {
 public:
@@ -55,6 +57,16 @@ protected:	// The real work.
 	int			set_spectrum_inversion		( int inverted );
 	int			rtlsdr_set_sample_freq_correction
 											( int ppm );
+	int			rtlsdr_get_usb_strings_canonical
+											( CString& manufact
+											, CString& product
+											, CString& serial
+											);
+	int			rtlsdr_get_usb_strings_canonical
+											( char *manufact
+											, char *product
+											, char *serial
+											);
 	
 public:
 	int			rtlsdr_set_xtal_freq		( uint32_t rtl_freq
@@ -125,24 +137,39 @@ public:
 											, char *product
 											, char *serial
 											);
+	int			rtlsdr_get_device_usb_cstrings
+											( uint32_t index
+											, CString& manufact
+											, CString& product
+											, CString& serial
+											);
 	int			rtlsdr_get_index_by_serial	( const char *serial );
 
 	int			rtlsdr_get_tuner_type		( int index );
 
 public:
 	// Static functions
-	static uint32_t	srtlsdr_get_device_count( void );
+	static uint32_t
+				srtlsdr_get_device_count	( void );
 	static const char *
-					srtlsdr_get_device_name	( uint32_t index );
-	static int		srtlsdr_get_device_usb_strings
+				srtlsdr_get_device_name		( uint32_t index );
+	static int	srtlsdr_get_device_usb_strings
 											( uint32_t index
 											, char *manufact
 											, char *product
 											, char *serial
 											);
+	static int	srtlsdr_get_device_usb_strings
+											( uint32_t index
+											, CString& manufact
+											, CString& product
+											, CString& serial
+											);
 	static int	srtlsdr_get_index_by_serial	( const char *serial );
-
 	static int	rtlsdr_static_get_tuner_type( int index );
+	static int	srtlsdr_eep_img_from_Dongle	( eepromdata&	dat
+											, Dongle*		regentry
+											);
 
 protected:
 	static void	GetCatalog					( void );
@@ -168,7 +195,7 @@ private:
 	int										gain; /* tenth dB */
 	int										gain_mode;
 	/* status */
-	int										driver_active;
+	bool									driver_active;	// Not used in Windows
 	ITuner*									tunerset[ RTLSDR_TUNER_R828D + 1 ];
 
 

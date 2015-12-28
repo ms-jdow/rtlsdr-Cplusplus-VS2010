@@ -50,6 +50,12 @@ RTLSDR_API int rtlsdr_get_device_usb_strings( uint32_t index
 											, char *serial
 											);
 
+RTLSDR_API int rtlsdr_get_device_usb_cstrings( uint32_t index
+											 , CString& manufact
+											 , CString& product
+											 , CString& serial
+											 );
+
 /*!
  * Get device index by USB serial string descriptor.
  *

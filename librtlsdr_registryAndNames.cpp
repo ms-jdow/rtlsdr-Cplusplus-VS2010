@@ -11,8 +11,6 @@ bool			rtlsdr::goodCatalog = false;
 
 #define REGISTRYBASE	_T( "Software\\rtlsdr" )
 
-#define STR_OFFSET	9
-
 CMyMutex	rtlsdr::registry_mutex( _T( "RtlSdr++ Mutex" ));
 CMyMutex	rtlsdr::dongle_mutex;
 
@@ -429,7 +427,7 @@ const char* rtlsdr::find_requested_dongle_name( libusb_context *ctx
 			return "";
 	}
 
-	if ( busy || test_busy( index ))
+	if ( busy )//|| test_busy( index )) Cannot do test_busy here because dev already open.
 	{
 		TRACE( "Dongle %d is busy or not present\n", index );
 		donglename.Format( "* %s", dongle->name );
@@ -457,14 +455,23 @@ int rtlsdr::open_requested_device( libusb_context *ctx
 		device = list[ i ];
 		libusb_get_device_descriptor( list[ i ], &dd );
 
-		if ( find_known_device( dd.idVendor, dd.idProduct ) )
+		if (( find_known_device( dd.idVendor, dd.idProduct ) )
+		&&	( index < (uint32_t) Dongles.GetSize()))
 		{
 			BYTE portnums[ MAX_USB_PATH ] = { 0 };
-			int portcnt = libusb_get_port_numbers( list[ i ], portnums, MAX_USB_PATH );
+			int portcnt = libusb_get_port_numbers( list[ i ]
+												 , portnums
+												 , MAX_USB_PATH
+												 );
 			if ( portcnt > 0 )
 			{
-				if ( memcmp( portnums, &Dongles[ index ].usbpath, portcnt ) == 0 )
+				if ( memcmp( portnums
+						   , &Dongles[ index ].usbpath
+						   , portcnt
+						   ) == 0 )
+				{
 					break;
+				}
 			}
 		}
 		device = NULL;
@@ -477,11 +484,12 @@ int rtlsdr::open_requested_device( libusb_context *ctx
 		{
 			ldevh = NULL;
 			fprintf( stderr, "usb_open error %d\n", r );
-			TRACE( "usb_open error %d\n", r );
+			TRACE( "open_requested_device (%d) error %d\n", index, r );
 			if ( r == LIBUSB_ERROR_ACCESS )
 			{
-				fprintf(stderr, "Please fix the device permissions, e.g. "
-								"by installing the udev rules file rtl-sdr.rules\n");
+				fprintf( stderr, "Please fix the device permissions, e.g. "
+								 "by installing the udev rules file "\
+								 "rtl-sdr.rules\n" );
 				TRACE( "Please fix the device permissions, e.g. "
 					   "by installing the udev rules file rtl-sdr.rules\n");
 			}
@@ -576,7 +584,7 @@ int rtlsdr::GetEepromString( const eepromdata& data
 	}
 
 	// Do this safely if the eeprom area is exactly full.
-	if ( string)
+	if ( string )
 	{
 		TCHAR* tdata = string->GetBuffer( 256 );
 		memset( tdata, 0, 256 );
@@ -792,4 +800,72 @@ int rtlsdr::GetDongleIndexFromDongle( const Dongle dongle )
 			return i;
 	}
 	return -1;
+}
+
+// STATIC //	Fill an eepromdata package from regustry data.
+int	rtlsdr::srtlsdr_eep_img_from_Dongle( eepromdata&	dat
+									   , Dongle*		regentry
+									   )
+{
+	memset( dat, 0, sizeof( eepromdata ));
+	dat[ 0 ] = 0x28;
+	dat[ 1 ] = 0x32;
+	dat[ 2 ] = (uint8_t) ( regentry->vid & 0xff );
+	dat[ 3 ] = (uint8_t) ( regentry->vid >> 8 );
+	dat[ 4 ] = (uint8_t) ( regentry->pid & 0xff );
+	dat[ 5 ] = (uint8_t) ( regentry->pid >> 8 );
+	//	6, 7, 8 = 0;
+	uint8_t pos = STR_OFFSET;
+
+	int count = regentry->manfIdCStr.GetLength();
+	uint8_t size = (uint8_t) (( count + 1 ) * sizeof( wchar_t ));
+	LPCTSTR chars = (LPCTSTR) regentry->manfIdCStr;
+	dat[ pos ] = size;
+	dat[ pos + 1 ] = 0x03;	// mandatory
+	if ( sizeof( eepromdata ) < ( pos + size + 4 ))	// +4 allows 2 empty strings
+	{
+		return -1;			//	Can't go on. Registry is evil.
+	}
+
+	wchar_t* chrdat = (wchar_t*) &dat[ pos + 2 ];
+	for( int i = 0; i < count; i++ )
+	{
+		*chrdat++ = chars[ i ];
+	}
+	pos += size;
+
+	count = regentry->prodIdCStr.GetLength();
+	size = (uint8_t) (( count + 1 ) * sizeof( wchar_t ));
+	chars = (LPCTSTR) regentry->prodIdCStr;
+	dat[ pos ] = size;
+	dat[ pos + 1 ] = 0x03;	// mandatory
+	if ( sizeof( eepromdata ) < ( pos + size + 2 ))	// +2 allows 1 empty strings
+	{
+		return -1;			//	Can't go on. Registry is evil.
+	}
+
+	chrdat = (wchar_t*) &dat[ pos + 2 ];
+	for( int i = 0; i < count; i++ )
+	{
+		*chrdat++ = chars[ i ];
+	}
+	pos += size;
+
+	count = regentry->sernIdCStr.GetLength();
+	size = (uint8_t) (( count + 1 ) * sizeof( wchar_t ));
+	chars = (LPCTSTR) regentry->sernIdCStr;
+	dat[ pos ] = size;
+	dat[ pos + 1 ] = 0x03;	// mandatory
+	if ( sizeof( eepromdata ) < ( pos + size ))
+	{
+		return -1;			//	Can't go on. Registry is evil.
+	}
+
+	chrdat = (wchar_t*) &dat[ pos + 2 ];
+	for( int i = 0; i < count; i++ )
+	{
+		*chrdat++ = chars[ i ];
+	}
+
+	return pos + size;
 }

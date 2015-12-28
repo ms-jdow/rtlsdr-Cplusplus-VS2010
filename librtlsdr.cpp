@@ -51,7 +51,7 @@
 	libusb_handle_events_timeout(ctx, tv)
 #endif
 
-#define CATALOG_TIMEOUT		3000		//	Not much changes in 3 seconds with dongles.
+#define CATALOG_TIMEOUT		5		//	Not much changes in 5 seconds with dongles.
 
 /* two raised to the power of n */
 #define TWO_POW(n)		((double)(1ULL<<(n)))
@@ -98,8 +98,8 @@ rtlsdr::rtlsdr()
 	, corr( 0 )
 	, gain( 0 )
 	, gain_mode( GAIN_MODE_MANUAL )
-	, driver_active( 0 )
-	, tuner_initialized( 0 )
+	, driver_active( false )
+	, tuner_initialized( -1 )
 	, spectrum_inversion( 0 )
 	// librtlsdr_dongle_comms
 	, ctx( NULL )
@@ -157,8 +157,8 @@ void rtlsdr::ClearVars( void )
 	effective_freq = 0;
 	corr = 0;
 	gain = 0;
-	driver_active = 0;
-	tuner_initialized = 0;
+	driver_active = false;
+	tuner_initialized = -1;
 	spectrum_inversion = 0;
 	//	librtlsdr_dongle_comms
 	ctx = NULL;
@@ -379,6 +379,76 @@ int rtlsdr::rtlsdr_get_usb_strings( CString& manufact
 	return r;
 }
 
+//	Get the USB strings the old way with CStrings
+int rtlsdr::rtlsdr_get_usb_strings_canonical( CString& manufact
+											, CString& product
+											, CString& serial
+											)
+{
+	char man[ 256 ];
+	char prd[ 256 ];
+	char ser[ 256 ];
+	int ret = rtlsdr_get_usb_strings_canonical( man, prd, ser );
+	if ( ret >= 0 )
+	{
+		manufact = man;
+		product = prd;
+		serial = ser;
+	}
+	return ret;
+}
+
+//	Get the USB strings the old way with char pointers
+int rtlsdr::rtlsdr_get_usb_strings_canonical( char *manufact
+											, char *product
+											, char *serial
+											)
+{
+	struct libusb_device_descriptor dd;
+	libusb_device *device = NULL;
+	const int buf_max = 256;
+	int r = 0;
+
+	device = libusb_get_device( devh );
+
+	r = libusb_get_device_descriptor( device, &dd );
+	if ( r < 0 )
+		return -1;
+
+	if ( manufact )
+	{
+		memset( manufact, 0, buf_max );
+		libusb_get_string_descriptor_ascii( devh
+										  , dd.iManufacturer
+										  , (unsigned char *) manufact
+										  , buf_max
+										  );
+	}
+
+	if ( product )
+	{
+		memset( product, 0, buf_max );
+		libusb_get_string_descriptor_ascii( devh
+										  , dd.iProduct
+										  , (unsigned char *) product
+										  , buf_max
+										  );
+	}
+
+	if ( serial )
+	{
+		memset( serial, 0, buf_max );
+		libusb_get_string_descriptor_ascii( devh
+										  , dd.iSerialNumber
+										  , (unsigned char *) serial
+										  , buf_max
+										  );
+	}
+
+	return 0;
+}
+
+
 int rtlsdr::rtlsdr_write_eeprom( uint8_t *data, uint8_t offset, uint16_t len )
 {
 	if (( !devh ) || (( offset + len ) > EEPROM_SIZE ))
@@ -492,7 +562,8 @@ int rtlsdr::rtlsdr_read_eeprom( eepromdata& data )
 				if ( !work->busy )
 				{
 					//	TODOTODO the found value is iffy here...
-					work->busy = true;		//	Of course. Should already be marked.
+					//	Alas, I don't find a safe workaround- yet.
+					work->busy = true;	//	Of course. Should already be marked.
 					changed = true;
 				}
 			}
@@ -907,7 +978,6 @@ int rtlsdr::rtlsdr_set_direct_sampling( int on )
 			rtlsdr_set_i2c_repeater( 1 );
 			r = tuner->exit();
 			rtlsdr_set_i2c_repeater( 0 );
-			tuner_initialized = 0;
 		}
 
 		/* disable Zero-IF mode */
@@ -934,7 +1004,6 @@ int rtlsdr::rtlsdr_set_direct_sampling( int on )
 			rtlsdr_set_i2c_repeater( 1 );
 			r |= tuner->init( this ); 
 			rtlsdr_set_i2c_repeater( 0 );
-			tuner_initialized = 1;
 		}
 
 		if (( tuner_type == RTLSDR_TUNER_R820T )
@@ -1069,6 +1138,15 @@ int rtlsdr::rtlsdr_get_device_usb_strings( uint32_t index
 	return srtlsdr_get_device_usb_strings( index, manufact, product, serial );
 }
 
+int rtlsdr::rtlsdr_get_device_usb_cstrings( uint32_t index
+										  , CString& manufact
+										  , CString& product
+										  , CString& serial
+										  )
+{
+	return srtlsdr_get_device_usb_strings( index, manufact, product, serial );
+}
+
 // STATIC //
 int rtlsdr::srtlsdr_get_device_usb_strings( uint32_t index
 										  , char *manufact
@@ -1142,6 +1220,74 @@ int rtlsdr::srtlsdr_get_device_usb_strings( uint32_t index
 	return r;
 }
 
+// STATIC //
+int rtlsdr::srtlsdr_get_device_usb_strings( uint32_t index
+										  , CString& manufact
+										  , CString& product
+										  , CString& serial
+										  )
+{
+	int r = -2;
+	const rtlsdr_dongle_t *device = NULL;
+	uint32_t device_count = 0;
+
+	GetCatalog();
+	switch( goodCatalog )
+	{
+	case true:
+		{
+			CMutexLock cml( dongle_mutex );
+			Dongle* dongle = NULL;
+			int tindex = 0;
+			dongle = &Dongles[ index ];
+			if ( dongle )
+			{
+				if ( manufact )
+				{
+					if ( test_busy( index ))
+						manufact = "* ";
+					manufact += dongle->manfIdCStr;
+				}
+				if ( product )
+				{
+					product = dongle->prodIdCStr;
+				}
+				if ( serial )
+				{
+					serial = dongle->sernIdCStr;
+				}
+				r = 0;	// Of course!
+				break;
+			}
+		}
+	case false:
+		manufact.Empty();
+		product.Empty();
+		serial.Empty();
+
+		rtlsdr work;
+		int r = work.rtlsdr_open( index );
+		if ( r >= 0 )
+		{
+			eepromdata data;
+			memset( data, 0xff, sizeof( eepromdata ));
+			r = work.rtlsdr_read_eeprom_raw( data );
+			if ( r >= 0 )
+			{
+				r = work.GetEepromStrings( data
+										 , &manufact
+										 , &product
+										 , &serial
+										 );
+			}
+		}
+		work.rtlsdr_close();
+		break;
+	}
+
+	return r;
+}
+
 /* STATIC */
 bool rtlsdr::test_busy( uint32_t index )
 {
@@ -1203,7 +1349,7 @@ int rtlsdr::claim_opened_device( void )
 	int r;
 	if ( libusb_kernel_driver_active( devh, 0 ) == 1 )
 	{
-		driver_active = 1;
+		driver_active = true;
 
 #ifdef DETACH_KERNEL_DRIVER
 		if (!libusb_detach_kernel_driver( devh, 0 ))
@@ -1249,15 +1395,17 @@ int rtlsdr::rtlsdr_open( uint32_t index )
 		return -10;
 
 	int r;
-	int cnt;
 	uint32_t device_count = 0;
 	uint8_t  reg;
 	libusb_device_descriptor dd;
-	Dongle	 dingle;	// Create an empty Dongle entry and fill it below.
 
 	//	Perform some basic initialization
 	if ( lastCatalog == 0 )
+	{
 		ReadRegistry();
+		if ( lastCatalog == 0 )
+			lastCatalog = 1;
+	}
 
 	ClearVars();
 
@@ -1382,80 +1530,13 @@ found:
 	}
 
 	r = tuner->init( this );
-	tuner_initialized = 1;
+	tuner_initialized = index;
 
 	//	Make sure this is initialized in the dongles. There is a
 	//	path that skips this if the right commands are not issued.
 	tuner->set_xtal_frequency( rtl_xtal );
 
 	rtlsdr_set_i2c_repeater( 0 );
-
-	//	dd is still valid from way above.	// - no it isn't
-
-	dingle.vid = dd.idVendor;
-	dingle.pid = dd.idProduct;
-
-//	Now update this device's data in Dongles[ index ];
-	rtlsdr_get_usb_strings( dingle.manfIdCStr
-						  , dingle.prodIdCStr
-						  , dingle.sernIdCStr
-						  );
-
-	dingle.tunerType = tuner_type;
-
-	//	Force update for path to dongle
-	BYTE portnums[ MAX_USB_PATH ] = { 0 };
-#if 1 || defined( PORT_PATH_WORKS_PORTNUMS_DOESNT )
-	//	This works for X64 even though it's deprecated.
-	cnt = libusb_get_port_path( ctx
-							  , libusb_get_device( devh )
-							  , portnums
-							  , MAX_USB_PATH
-							  );
-#else
-	//	This fails even though it is the "proper" way.
-	cnt = libusb_get_port_numbers( devlist[ i ], portnums, MAX_USB_PATH );
-#endif
-
-	if ( cnt > 0 )
-	{
-		// We have good portnums. Clear libusb messup.
-		for( size_t j = cnt; j < 7; j++ )
-			portnums[ j ] = 0;
-		//	enter port path into the record.
-		memcpy( dingle.usbpath, portnums, sizeof( portnums ));
-
-	}
-
-	dingle.busy = true;
-
-	//	Put dingle into the registry in the right place.
-	//	We either fix a current entry or append to the end.
-	{
-		CMutexLock cml( dongle_mutex );
-
-		int rtlsdrindex = GetDongleIndexFromNames( dingle.manfIdCStr
-												 , dingle.prodIdCStr
-												 , dingle.sernIdCStr
-												 );
-
-		if ( rtlsdrindex < 0 )
-		{
-			dingle.found = (char) Dongles.GetSize();
-			rtlsdrindex = (int) Dongles.Add( dingle );
-		}
-		else
-		{
-			dingle.found = rtlsdrindex;
-			Dongles[ rtlsdrindex ] = dingle;
-		}
-
-		m_dongle = dingle;
-		{
-			CMutexLock cml( registry_mutex );
-			WriteSingleRegistry( rtlsdrindex );
-		}
-	}
 
 	return 0;
 
@@ -1505,6 +1586,7 @@ int rtlsdr::rtlsdr_close( void )
 
 		libusb_close( devh );
 		devh = NULL;
+		tuner_initialized = -1;
 
 		int index;
 		{
@@ -1525,8 +1607,6 @@ int rtlsdr::rtlsdr_close( void )
 		libusb_exit( ctx );
 		ctx = NULL;
 	}
-
-
 
 	return 0;
 }
@@ -1589,7 +1669,7 @@ bool rtlsdr::reinitDongles( void )
 			if ( find_known_device( dd.idVendor, dd.idProduct ) == NULL )
 				continue;
 
-//				TRACE( "vid %04x, pid %04x\n", dd.idVendor, dd.idProduct );	// Hokay!
+//			TRACE( "vid %04x, pid %04x\n", dd.idVendor, dd.idProduct );	// Hokay!
 			Dongle dongle;
 
 			//	enter the vid, pid, etc into the record.
@@ -1648,9 +1728,33 @@ bool rtlsdr::reinitDongles( void )
 				if ( res >= 0 )
 				{
 					dongle.busy = false;
-					work.rtlsdr_get_usb_strings( manf, prod, sern );
-					dongle.tunerType = work.tuner_type;
-					work.rtlsdr_close();
+					// Figure out if we match strings somewhere - likely reg.
+					eepromdata testdata = { 0 };
+					res = work.rtlsdr_read_eeprom_raw( testdata );
+					if ( res < 0 )
+						res = res;
+					//	Now run comparisons against only registered dongles.
+					bool matched = false;
+					for( int dng = 0; dng < Dongles.GetSize(); dng++ )
+					{
+						if ( CompareSparseRegAndData( &Dongles[ dng ]
+													, testdata
+													))
+						{
+							matched = true;
+							break;
+						}
+					}
+					if ( !matched )
+					{
+						//	If we do not match registry then do it the hard way.
+						work.rtlsdr_get_usb_strings( manf, prod, sern );
+					}
+					if ( matched )
+					{
+						rtlsdr_count++;
+						continue;	//	No need to merge or anything else.
+					}
 				}
 				else
 				{
@@ -1742,14 +1846,21 @@ unsigned __int64 rtlsdr::srtlsdr_get_version_int64( void )
 			return 0;		//	We're confused.
 		}
 
-		work = work.Left( loc ) + _T( "\\rtlsdr.dll" );
+#if defined( UNICODE )
+		work = work.Left( loc ) + L"\\rtlsdru.dll";
+#else
+		work = work.Left( loc ) + "\\rtlsdr.dll";
+#endif
 
 
 		int size = ::GetFileVersionInfoSize( work, NULL );
+		if ( size == 0 )
+			return 0;
+
 		BYTE *vinfo = new BYTE[ size ];
-		memset( vinfo, 0, sizeof( vinfo ));
 		if ( vinfo != NULL )
 		{
+			memset( vinfo, 0, sizeof( vinfo ));
 			if ( ::GetFileVersionInfo( work, NULL, size, vinfo ) != 0 )
 			{
 				VS_FIXEDFILEINFO *ffinfo;

@@ -852,7 +852,6 @@ int rtlsdr::rtlsdr_deinit_baseband( void )
 		rtlsdr_set_i2c_repeater( 1 );
 		r = tuner->exit();			/* deinitialize tuner */
 		rtlsdr_set_i2c_repeater( 0 );
-		tuner_initialized = 0;
 	}
 
 	/* poweroff demodulator and ADCs */
@@ -864,4 +863,42 @@ int rtlsdr::rtlsdr_deinit_baseband( void )
 bool rtlsdr::dummy_write( void )
 {
 	return  rtlsdr_write_reg( USBB, USB_SYSCTL, 0x09, 1 ) < 0;
+}
+
+//	Static // Compare sparse eeprom image with image built from Dongle entry.
+bool rtlsdr::CompareSparseRegAndData( Dongle*		dng
+									, eepromdata&	data
+									)
+{
+	eepromdata dngd;
+	int err = srtlsdr_eep_img_from_Dongle( dngd, dng );
+	if ( err < 0 )
+		return 0;
+
+	int r = 0;
+	int i;
+	uint8_t pos = 0;
+
+	for( i = 0; i < 6; i++ )
+	{
+		if ( data[ i ] != dngd[ i ])
+			return false;
+	}
+
+	pos = STR_OFFSET;
+	//	Match manf string's size and type
+	if ( memcmp( &data[ pos ], &dngd[ pos ], data[ pos ] ) != 0 )
+		return false;
+	pos += data[ pos ];
+
+	//	Match last char of manf string and prod string size and type
+	if ( memcmp( &data[ pos ], &dngd[ pos ], data[ pos ] ) != 0 )
+		return false;
+	pos += data[ pos ];
+
+	//	Match last char of prod string and sern string size and type
+	if ( memcmp( &data[ pos ], &dngd[ pos ], data[ pos ] ) != 0 )
+		return false;
+
+	return true;
 }

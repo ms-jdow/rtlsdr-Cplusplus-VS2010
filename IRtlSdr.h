@@ -141,5 +141,12 @@ public:
 											, char *serial
 											) PURE;
 	virtual
+	int			rtlsdr_get_device_usb_cstrings
+											( uint32_t index
+											, CString& manufact
+											, CString& product
+											, CString& serial
+											) PURE;
+	virtual
 	int			rtlsdr_get_index_by_serial	( const char *serial ) PURE;
 };

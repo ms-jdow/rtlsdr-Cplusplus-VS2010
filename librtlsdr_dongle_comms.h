@@ -84,12 +84,12 @@ protected:	//	Basic comms
 										);
 	int			rtlsdr_write_eeprom_raw	( eepromdata& data );
 	int			rtlsdr_read_eeprom_raw	( eepromdata& data );
+
 public:
 	int			GetOpenedDeviceIndex	( void )
 										{
 											return GetDongleIndexFromDongle( m_dongle );
 										}
-
 
 public:		//	Read and write bulk transfers
 	int			rtlsdr_reset_buffer		( void );
@@ -115,8 +115,11 @@ protected:	//	Read and write bulk transfers
 	int			rtlsdr_free_async_buffers
 										( void );
 
-protected:	// Support function
+protected:	// Support functions
 	bool		dummy_write				( void );
+	static bool	CompareSparseRegAndData	( Dongle*		dng
+										, eepromdata&	data
+										);
 
 public:		//	Read and write bulk transfers callback
 	void LIBUSB_CALL
