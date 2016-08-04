@@ -3,6 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "rtlsdr", "rtsdr.vcxproj", "{C6D5C104-8C62-400C-96DA-E3E15AC2C0F7}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RtlSdr Catalog", "RtlSdr Catalog\RtlSdr Catalog.vcxproj", "{61333089-8BC9-4A2E-96B6-06A0578C2DA8}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{C3668B98-B6F4-4038-B2E8-B7C36A01FA5E}"
+	ProjectSection(SolutionItems) = preProject
+		RtlSdr++ and RtlSdr Catalog documentation.txt = RtlSdr++ and RtlSdr Catalog documentation.txt
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -31,6 +38,22 @@ Global
 		{C6D5C104-8C62-400C-96DA-E3E15AC2C0F7}.ReleaseU|Win32.Build.0 = ReleaseU|Win32
 		{C6D5C104-8C62-400C-96DA-E3E15AC2C0F7}.ReleaseU|x64.ActiveCfg = ReleaseU|x64
 		{C6D5C104-8C62-400C-96DA-E3E15AC2C0F7}.ReleaseU|x64.Build.0 = ReleaseU|x64
+		{61333089-8BC9-4A2E-96B6-06A0578C2DA8}.Debug|Win32.ActiveCfg = Debug|Win32
+		{61333089-8BC9-4A2E-96B6-06A0578C2DA8}.Debug|Win32.Build.0 = Debug|Win32
+		{61333089-8BC9-4A2E-96B6-06A0578C2DA8}.Debug|x64.ActiveCfg = Debug|x64
+		{61333089-8BC9-4A2E-96B6-06A0578C2DA8}.Debug|x64.Build.0 = Debug|x64
+		{61333089-8BC9-4A2E-96B6-06A0578C2DA8}.DebugU|Win32.ActiveCfg = DebugU|Win32
+		{61333089-8BC9-4A2E-96B6-06A0578C2DA8}.DebugU|Win32.Build.0 = DebugU|Win32
+		{61333089-8BC9-4A2E-96B6-06A0578C2DA8}.DebugU|x64.ActiveCfg = DebugU|x64
+		{61333089-8BC9-4A2E-96B6-06A0578C2DA8}.DebugU|x64.Build.0 = DebugU|x64
+		{61333089-8BC9-4A2E-96B6-06A0578C2DA8}.Release|Win32.ActiveCfg = Release|Win32
+		{61333089-8BC9-4A2E-96B6-06A0578C2DA8}.Release|Win32.Build.0 = Release|Win32
+		{61333089-8BC9-4A2E-96B6-06A0578C2DA8}.Release|x64.ActiveCfg = Release|x64
+		{61333089-8BC9-4A2E-96B6-06A0578C2DA8}.Release|x64.Build.0 = Release|x64
+		{61333089-8BC9-4A2E-96B6-06A0578C2DA8}.ReleaseU|Win32.ActiveCfg = ReleaseU|Win32
+		{61333089-8BC9-4A2E-96B6-06A0578C2DA8}.ReleaseU|Win32.Build.0 = ReleaseU|Win32
+		{61333089-8BC9-4A2E-96B6-06A0578C2DA8}.ReleaseU|x64.ActiveCfg = ReleaseU|x64
+		{61333089-8BC9-4A2E-96B6-06A0578C2DA8}.ReleaseU|x64.Build.0 = ReleaseU|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

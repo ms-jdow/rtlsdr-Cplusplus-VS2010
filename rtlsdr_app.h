@@ -8,6 +8,7 @@
 #endif
 
 #include "resource.h"		// main symbols
+#include "SharedMemoryFile.h"
 
 //#define THEAPP	//	If MFC dialogs are ever used anywhere this must be set.
 				//	This is also a handy way to get this module version. But
@@ -46,3 +47,6 @@ protected:
 
 extern rtlsdr_app theApp;
 #endif
+extern RtlSdrAreaDef				TestDongles;
+extern RtlSdrAreaDef*				RtlSdrArea;
+extern Dongle*						Dongles;

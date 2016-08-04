@@ -16,9 +16,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />
-    <None Include="AUTHORS" />
-    <None Include="COPYING" />
-    <None Include="README" />
+    <None Include="res\RtlSdr_Catalog.rc2">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\RtlSdr_Catalog.ico">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -27,67 +30,40 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="reg_field.h">
+    <ClInclude Include="Resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="rtl-sdr.h">
+    <ClInclude Include="..\Common\DongleArrays.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="rtl-sdr_export.h">
+    <ClInclude Include="..\Common\Recognized Dongles.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="rtlsdr_i2c.h">
+    <ClInclude Include="..\Common\SharedMemoryFile.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="tuner_e4k.h">
+    <ClInclude Include="RtlSdrList.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="tuner_fc0012.h">
+    <ClInclude Include="DongleListMaint.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="tuner_fc0013.h">
+    <ClInclude Include="SystemTray.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="tuner_fc2580.h">
+    <ClInclude Include="InvisibleWnd.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="tuner_r82xx.h">
+    <ClInclude Include="TrayIconManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="librtlsdr.h">
+    <ClInclude Include="RtlSdr_CatalogDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ITuner.h">
+    <ClInclude Include="RtlSdr_Catalog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="tuner_Dummy.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="rtlsdr_app.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="resource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="librtlsdr_dongle_comms.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="librtlsdr_registryAndNames.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="MyMutex.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="IRtlSdr.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Common\DongleArrays.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Common\Recognized Dongles.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Common\SharedMemoryFile.h">
+    <ClInclude Include="MyCommandLineInfo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -95,39 +71,36 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="librtlsdr.cpp">
+    <ClCompile Include="DongleListMaint.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="tuner_e4k.cpp">
+    <ClCompile Include="..\Common\SharedMemoryFile.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="tuner_fc0012.cpp">
+    <ClCompile Include="RtlSdrList.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="tuner_fc0013.cpp">
+    <ClCompile Include="SystemTray.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="tuner_fc2580.cpp">
+    <ClCompile Include="InvisibleWnd.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="tuner_r82xx.cpp">
+    <ClCompile Include="TrayIconManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="rtlsdr_app.cpp">
+    <ClCompile Include="RtlSdr_CatalogDlg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="librtlsdr_dongle_comms.cpp">
+    <ClCompile Include="RtlSdr_Catalog.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="librtlsdr_registryAndNames.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Common\SharedMemoryFile.cpp">
+    <ClCompile Include="MyCommandLineInfo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="rtlsdr.rc">
+    <ResourceCompile Include="RtlSdr_Catalog.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
   </ItemGroup>

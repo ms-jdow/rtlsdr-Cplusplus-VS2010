@@ -12,6 +12,7 @@
 
 static CList< rtlsdr* > appdongles;
 
+
 //
 //TODO: If this DLL is dynamically linked against the MFC DLLs,
 //		any functions exported from this DLL which call into

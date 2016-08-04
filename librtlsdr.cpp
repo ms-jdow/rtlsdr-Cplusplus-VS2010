@@ -115,9 +115,24 @@ rtlsdr::rtlsdr()
 	, async_cancel( 0 )
 	, xfer_errors( 0 )
 	, dev_lost( 0 )
+	, active_index( -1 )
 	//	librtlsdr_registryAndNames
 	//		no entries
 {
+	if ( RtlSdrArea == NULL )
+	{
+		if ( SharedDongleData.active )
+		{
+			RtlSdrArea = SharedDongleData.sharedMem;
+			Dongles = SharedDongleData.sharedMem->dongleArray;
+		}
+		else
+		{
+			RtlSdrArea = &TestDongles;
+			Dongles = TestDongles.dongleArray;
+		}
+	}
+
 	memset( fir, 0, sizeof( fir ));
 	memset( tunerset, 0, sizeof( tunerset ));
 	int i = 0;
@@ -141,6 +156,7 @@ rtlsdr::~rtlsdr()
 	delete tunerset[ i++ ];
 	delete tunerset[ i++ ];
 	delete tunerset[ i++ ];
+	SharedDongleData.Close();
 }
 
 void rtlsdr::ClearVars( void )
@@ -360,10 +376,10 @@ int rtlsdr::rtlsdr_get_usb_strings( char *manufact
 	return r;
 }
 
-int rtlsdr::rtlsdr_get_usb_strings( CString& manufact
-								  , CString& product
-								  , CString& serial
-								  )
+int rtlsdr::rtlsdr_get_usb_cstrings( CString& manufact
+								   , CString& product
+								   , CString& serial
+								   )
 {
 	eepromdata data;
 	memset( data, 0xff, sizeof( eepromdata ));
@@ -466,6 +482,8 @@ int rtlsdr::rtlsdr_write_eeprom( uint8_t *data, uint8_t offset, uint16_t len )
 
 	Dongle olddongle;
 	r = FullEepromParse( olddata, olddongle );
+	olddongle.found = active_index;
+	olddongle.tunerType = tuner_type;
 
 	eepromdata workdata;
 	memcpy( workdata, olddata, sizeof( eepromdata ));
@@ -475,7 +493,6 @@ int rtlsdr::rtlsdr_write_eeprom( uint8_t *data, uint8_t offset, uint16_t len )
 	r = FullEepromParse( workdata, tdongle );
 	if ( r < 0 )
 		return -4;						// Not safe to write
-
 
 	r = rtlsdr_write_eeprom_raw( workdata );
 
@@ -553,8 +570,12 @@ int rtlsdr::rtlsdr_read_eeprom( eepromdata& data )
 		int parsed = -1;
 		{
 			CMutexLock cml( dongle_mutex );
-			//	Find our old entry.
-			parsed = SafeFindDongle( m_dongle );
+			if ( TestMaster())
+				//	Find our new entry since database is already updated.
+				parsed = SafeFindDongle( tdongle );
+			else
+				//	Find our old entry.
+				parsed = SafeFindDongle( m_dongle );
 			ASSERT( parsed >= 0 );
 			if ( parsed >= 0 )
 			{
@@ -572,7 +593,7 @@ int rtlsdr::rtlsdr_read_eeprom( eepromdata& data )
 				//	Um, simply add it to the database?
 				//	By definition we should not be here
 				tdongle.tunerType = tuner_type;
-				Dongles.Add( tdongle );
+				Dongles[ RtlSdrArea->activeEntries++ ] = tdongle;
 				changed = true;
 			}
 		}
@@ -713,10 +734,10 @@ int rtlsdr::rtlsdr_get_tuner_type( int index )
 //	STATIC
 int	rtlsdr::rtlsdr_static_get_tuner_type( int index )
 {
-	if ((DWORD) index < (DWORD) Dongles.GetSize())
+	if ((DWORD) index < (DWORD) RtlSdrArea->activeEntries )
 	{
 		int tindex = 0;
-		for( INT_PTR i = 0; i < Dongles.GetSize(); i++ )
+		for( DWORD i = 0; i < RtlSdrArea->activeEntries; i++ )
 		{
 			if ( Dongles[ i ].found == index )
 			{
@@ -1101,14 +1122,14 @@ int rtlsdr::rtlsdr_set_dithering( int dither )
 uint32_t rtlsdr::rtlsdr_get_device_count( void )
 {
 	GetCatalog();
-	return (int) Dongles.GetSize();
+	return RtlSdrArea->activeEntries;
 }
 
 // STATIC //
 uint32_t rtlsdr::srtlsdr_get_device_count( void )
 {
 	GetCatalog();
-	return (int) Dongles.GetSize();
+	return RtlSdrArea->activeEntries;
 }
 
 const char *rtlsdr::rtlsdr_get_device_name( uint32_t index )
@@ -1174,17 +1195,17 @@ int rtlsdr::srtlsdr_get_device_usb_strings( uint32_t index
 				{
 					if ( test_busy( index ))
 						t = "* ";
-					t += dongle->manfIdCStr;
+					t += dongle->manfIdStr;
 					strncpy_s( manufact, 256, t, 256 );
 				}
 				if ( product )
 				{
-					t = dongle->prodIdCStr;
+					t = dongle->prodIdStr;
 					strncpy_s( product, 256, t, 256 );
 				}
 				if ( serial )
 				{
-					t = dongle->sernIdCStr;
+					t = dongle->sernIdStr;
 					strncpy_s( serial, 256, t, 256 );
 				}
 				r = 0;	// Of course!
@@ -1246,15 +1267,15 @@ int rtlsdr::srtlsdr_get_device_usb_strings( uint32_t index
 				{
 					if ( test_busy( index ))
 						manufact = "* ";
-					manufact += dongle->manfIdCStr;
+					manufact += CString( dongle->manfIdStr );
 				}
 				if ( product )
 				{
-					product = dongle->prodIdCStr;
+					product = CString( dongle->prodIdStr );
 				}
 				if ( serial )
 				{
-					serial = dongle->sernIdCStr;
+					serial = CString( dongle->sernIdStr );
 				}
 				r = 0;	// Of course!
 				break;
@@ -1416,6 +1437,8 @@ int rtlsdr::rtlsdr_open( uint32_t index )
 	if ( r < 0 )
 		goto err;
 
+	active_index = index;
+
 	//	Now we "really" open the device and discover the tuner type.
 	rtl_xtal = DEF_RTL_XTAL_FREQ;
 
@@ -1504,6 +1527,7 @@ int rtlsdr::rtlsdr_open( uint32_t index )
 	}
 
 found:
+	TRACE( "tuner_type = %d.\n", tuner_type );
 	/* use the rtl clock value by default */
 	tun_xtal = rtl_xtal;
 	tuner = tunerset[ tuner_type ];
@@ -1525,7 +1549,7 @@ found:
 		TRACE( "No supported tuner found\n");
 		rtlsdr_set_direct_sampling( 1 );
 		break;
-	default:
+	default:	// FitiPower etc....
 		break;
 	}
 
@@ -1537,6 +1561,9 @@ found:
 	tuner->set_xtal_frequency( rtl_xtal );
 
 	rtlsdr_set_i2c_repeater( 0 );
+	Dongles[ index ].busy = true;
+	m_dongle = Dongles[ index ];
+	WriteSingleRegistry( index );
 
 	return 0;
 
@@ -1554,12 +1581,15 @@ int rtlsdr::rtlsdr_close( void )
 	if (( devh == NULL ) && ( ctx == NULL ))
 		return -1;
 
+	if ((DWORD) active_index >= RtlSdrArea->activeEntries )
+		return 0;						//  Already closed or illegal dongle
+
 	if ( devh != NULL )
 	{
 
 		rtlsdr_set_i2c_repeater( 0 );
 
-		if( !dev_lost )
+		if ( !dev_lost )
 		{
 			/* block until all async operations have been completed (if any) */
 			while ( RTLSDR_INACTIVE != async_status)
@@ -1599,6 +1629,7 @@ int rtlsdr::rtlsdr_close( void )
 			Dongles[ index ].busy = false;
 			CMutexLock cml( registry_mutex );
 			WriteSingleRegistry( index );
+			m_dongle.Clear();
 		}
 	}
 
@@ -1607,7 +1638,9 @@ int rtlsdr::rtlsdr_close( void )
 		libusb_exit( ctx );
 		ctx = NULL;
 	}
-
+	Dongles[ active_index ].busy = false;
+	WriteSingleRegistry( active_index );
+	active_index = -1;
 	return 0;
 }
 
@@ -1631,6 +1664,8 @@ bool rtlsdr::reinitDongles( void )
 {
 	bool rval = false;
 	DWORD temp = 0;
+	CDongleArray reinit_dongles;	//	The array of unmatched dongles.
+
 	// Init libusb...
 	
 	libusb_context * tctx = NULL;
@@ -1655,9 +1690,14 @@ bool rtlsdr::reinitDongles( void )
 	inReinitDongles = true;
 
 	//	Clear Dongles array found devices value to not found, -1.
-	Dongles.SetAllNotFound();
+	for( DWORD i = 0; i < RtlSdrArea->activeEntries; i++ )
+	{
+		Dongles[ i ].found = -1;
+		Dongles[ i ].busy = false;
+	}
 
-	int rtlsdr_count = 0;
+	//	And clear the rest of the dongle area to 0.
+	int rtlsdr_count = RtlSdrArea->activeEntries;
 	if ( dev_count > 0 )
 	{
 		for( ssize_t i = 0; i < dev_count; i++ )
@@ -1665,37 +1705,31 @@ bool rtlsdr::reinitDongles( void )
 			libusb_device_descriptor dd;
 
 			int err = libusb_get_device_descriptor( devlist[ i ], &dd );
-				
-			if ( find_known_device( dd.idVendor, dd.idProduct ) == NULL )
+
+			const rtlsdr_dongle_t * known = find_known_device( dd.idVendor
+															 , dd.idProduct
+															 );
+			if ( known == NULL )
 				continue;
 
-//			TRACE( "vid %04x, pid %04x\n", dd.idVendor, dd.idProduct );	// Hokay!
 			Dongle dongle;
 
 			//	enter the vid, pid, etc into the record.
-			dongle.vid           = dd.idVendor;
-			dongle.pid           = dd.idProduct;
-			dongle.found         = (char) rtlsdr_count;
+			dongle.vid		= dd.idVendor;
+			dongle.pid		= dd.idProduct;
+			dongle.found	= (char) i;
 
-			char manf[ _MAX_PATH ] = { "Unknown \0\0" };
-			char prod[ _MAX_PATH ] = { "Unknown \0\0" };
-			char sern[ _MAX_PATH ] = { "Unknown \0\0" };
-			manf[ 8 ] = 'A' + (BYTE) rtlsdr_count;
-			prod[ 8 ] = 'A' + (BYTE) rtlsdr_count;
-			sern[ 8 ] = 'A' + (BYTE) rtlsdr_count;
+			//	enter some "useful" default strings
+			CStringA manf( known->manfname );
+			CStringA prod( known->prodname );
+			CStringA sern( char( '0' + rtlsdr_count ));
+			// TODOTODO testing.
+			manf += char( '0' + rtlsdr_count );
+			prod += char( '0' + rtlsdr_count );
 
-			//	Insert default names if cannot be read,
-			if ( dd.idVendor == 0x0bda )
-				strncpy_s( manf, "Realtek", _MAX_PATH );
-			if ( dd.idVendor == 0x0ccd )
-				strncpy_s( manf, "Teratec", _MAX_PATH );
-
-			if ( dd.idProduct == 0x2838 )
-				strncpy_s( prod, "RTL2838UHIDIR", _MAX_PATH );
-			if ( dd.idProduct == 0x2832 )
-				strncpy_s( prod, "RTL2832U", _MAX_PATH );
-
-			BYTE portnums[ MAX_USB_PATH ] = { 0 };
+			//	Find the USB path. If it matches something from Dongles array
+			//	we (rashly) can presume a match.
+			usbpath_t portnums = { 0 };
 #if 1 || defined( PORT_PATH_WORKS_PORTNUMS_DOESNT )
 			//	This works for X64 even though it's deprecated.
 			int cnt = libusb_get_port_path( tctx
@@ -1714,67 +1748,175 @@ bool rtlsdr::reinitDongles( void )
 				for( int j = cnt; j < 7; j++ )
 					portnums[ j ] = 0;
 				//	enter port path into the record.
-				memcpy( dongle.usbpath, portnums, sizeof( portnums ));
+				memcpy( dongle.usbpath, portnums, sizeof( usbpath_t ));
 			}
 			else
 			{
-				memset( dongle.usbpath, 0, sizeof( portnums ));
+				memset( dongle.usbpath, 0, sizeof( usbpath_t ));
 				TRACE( "	%d:  Error %d\n", i, err );
 			}
-			//	Try to open the device to determine status
+
+			//	Try to open the device to determine busy status and perhaps
+			//	read the name.
 			{
 				rtlsdr work;
 				int res = work.rtlsdr_open((uint32_t) rtlsdr_count );
 				if ( res >= 0 )
 				{
 					dongle.busy = false;
+
 					// Figure out if we match strings somewhere - likely reg.
 					eepromdata testdata = { 0 };
 					res = work.rtlsdr_read_eeprom_raw( testdata );
 					if ( res < 0 )
 						res = res;
+
+					//	Parse eeprom data to get the names and eventually add it.
+					char* manfs = manf.GetBuffer( 256 );
+					char* prods = prod.GetBuffer( 256 );
+					char* serns = sern.GetBuffer( 256 );
+					work.GetEepromStrings( testdata
+										 , sizeof( eepromdata )
+										 , manfs
+										 , prods
+										 , serns
+										 );
+					manf.ReleaseBuffer();
+					prod.ReleaseBuffer();
+					sern.ReleaseBuffer();
+
+					//	We have it open - get the tunertype now?
+					dongle.tunerType = work.rtlsdr_get_tuner_type();
+
 					//	Now run comparisons against only registered dongles.
 					bool matched = false;
-					for( int dng = 0; dng < Dongles.GetSize(); dng++ )
+					DWORD dng = 0;
+					for( ; dng < RtlSdrArea->activeEntries; dng++ )
 					{
 						if ( CompareSparseRegAndData( &Dongles[ dng ]
 													, testdata
 													))
 						{
-							matched = true;
-							break;
+							//	Compare USB path....
+							if (( portnums[ 0 ] != 0 )
+							&&	( memcmp( portnums
+										, Dongles[ dng ].usbpath
+										, MAX_USB_PATH
+										) == 0 )
+							   )
+							{
+								matched = true;
+								rtlsdr_count++;
+								Dongles[ dng ].busy = false;
+								Dongles[ dng ].found = (int) i;
+							}
+							else
+							{
+								dongle.duplicated = true;
+								Dongles[ dng ].duplicated = true;
+								//	This is a different baby. No match even if
+								//	the names data match. Continue searching.
+							}
 						}
 					}
-					if ( !matched )
+					work.rtlsdr_close();
+
+					if ( matched && !dongle.duplicated )
 					{
-						//	If we do not match registry then do it the hard way.
-						work.rtlsdr_get_usb_strings( manf, prod, sern );
+						continue;
 					}
-					if ( matched )
+
+					if ( dng >= RtlSdrArea->activeEntries )
 					{
-						rtlsdr_count++;
-						continue;	//	No need to merge or anything else.
+						memcpy( dongle.manfIdStr, manf, manf.GetLength());
+						memset( &dongle.manfIdStr[ manf.GetLength()]
+							  , 0
+							  , MAX_STR_SIZE - manf.GetLength());
+						memcpy( dongle.prodIdStr, prod, prod.GetLength());
+						memset( &dongle.prodIdStr[ prod.GetLength()]
+							  , 0
+							  , MAX_STR_SIZE - prod.GetLength());
+						memcpy( dongle.sernIdStr, sern, sern.GetLength());
+						memset( &dongle.sernIdStr[ sern.GetLength()]
+							  , 0
+							  , MAX_STR_SIZE - sern.GetLength());
+						memcpy( dongle.usbpath, portnums, MAX_USB_PATH );
+						dongle.found = (int) i;
+					}
+					else
+					{
+						//	Nothing matched so add it to reinit_dongles and move on.
+						//	Parse eeprom data to get the names and eventually add it.
+						char* manfs = manf.GetBuffer( 256 );
+						char* prods = prod.GetBuffer( 256 );
+						char* serns = sern.GetBuffer( 256 );
+						work.GetEepromStrings( testdata, 256, manfs, prods, serns );
+						manf.ReleaseBuffer();
+						prod.ReleaseBuffer();
+						sern.ReleaseBuffer();
 					}
 				}
 				else
 				{
+					//	Test if the paths match in the data merge.
 					dongle.busy = true;
 				}
 			}
-			// Build strings into dongle entry.
-			dongle.manfIdCStr = manf;
-			dongle.prodIdCStr = prod;
-			dongle.sernIdCStr = sern;
 
-			//	Merge with master
-			mergeToMaster( dongle, rtlsdr_count );
+			// Build strings into dongle entry.
+			memset( dongle.manfIdStr, 0, sizeof( dongle.manfIdStr ));
+			strcpy_s( dongle.manfIdStr, manf );
+			memset( dongle.prodIdStr, 0, sizeof( dongle.prodIdStr ));
+			strcpy_s( dongle.prodIdStr, prod );
+			memset( dongle.sernIdStr, 0, sizeof( dongle.sernIdStr ));
+			strcpy_s( dongle.sernIdStr, sern );
+
+			reinit_dongles.Add( dongle );
+
+			//	Items that have gotten to hear are either new or busy.
+			//	Loop merging after we're all done here.
 
 			rtlsdr_count++;
 		}
 		libusb_free_device_list( devlist, 1 );
-
-		//	Merge new dongle array with old dongle array.
 		libusb_exit( tctx );
+
+		//	Merge new dongle array with old dongle array here.
+		for ( int i = 0; i < reinit_dongles.GetSize(); i++ )
+		{
+			Dongle dongle = reinit_dongles[ i ];
+			//	At this point if a dongle is marked duplicated it may simply be
+			//	a dongle moved to another port. Test for two name matches on the
+			//	same dongle. If there is only one then fix the port data - which
+			//	may be awkward.
+			//	TODOTODO
+			int count = 0;
+			int lf = -1;
+			TRACE( "Orphan dongle %d, found %d busy %d duplicated %d", i, dongle.found, dongle.busy, dongle.duplicated );
+			for ( ULONG j = 0; j < RtlSdrArea->activeEntries; j++ )
+			{
+				Dongle* dtest = &Dongles[ j ];
+				if (( dongle == *dtest )
+				&&	( strncmp( dongle.manfIdStr, dtest->manfIdStr, MAX_STR_SIZE ) == 0 )
+				&&	( strncmp( dongle.prodIdStr, dtest->prodIdStr, MAX_STR_SIZE ) == 0 )
+				&&	( strncmp( dongle.sernIdStr, dtest->sernIdStr, MAX_STR_SIZE ) == 0 )
+				&&	( dongle.vid == dtest->vid )
+				&&	( dongle.pid == dtest->pid )
+				&&	( dongle.tunerType == dtest->tunerType )
+				   )
+				{
+					lf = j;
+					count++;
+				}
+			}
+			if ( count == 1 )
+			{
+				// Correct the port information
+				memcpy( Dongles[ lf ].usbpath, dongle.usbpath, MAX_USB_PATH );
+			}
+			else
+				mergeToMaster( dongle );
+		}
 		rval = true;
 		WriteRegistry();
 	}
@@ -1784,9 +1926,50 @@ bool rtlsdr::reinitDongles( void )
 	return rval;
 }
 
+
+bool rtlsdr::TestMaster( void )
+{
+	if ( RtlSdrArea == NULL )
+	{
+		if ( SharedDongleData.active )
+		{
+			RtlSdrArea = SharedDongleData.sharedMem;
+			Dongles = SharedDongleData.sharedMem->dongleArray;
+		}
+		else
+		{
+			RtlSdrArea = &TestDongles;
+			Dongles = TestDongles.dongleArray;
+		}
+	}
+
+	RtlSdrArea->MasterPresent = false;
+	Sleep( 20 );
+	if ( RtlSdrArea->MasterPresent )
+	{
+		goodCatalog = true;
+		return true;
+	}
+	Sleep( 20 );
+	if ( RtlSdrArea->MasterPresent )
+	{
+		goodCatalog = true;
+		return true;
+	}
+	return false;
+}
+
+
 //	STATIC	//
 void rtlsdr::GetCatalog( void )
 {
+	// Make sure shared memory areas are loaded for this.
+	if ( TestMaster())
+		return;					//  We have known good data already.
+
+	//	Else master catalog tool not running so fall through
+	//	and do it the hard way.
+
 	//	test to see if the catalog started in the last second. Otherwise
 	//	use what we have.
 	if ( time( NULL ) - lastCatalog < CATALOG_TIMEOUT )

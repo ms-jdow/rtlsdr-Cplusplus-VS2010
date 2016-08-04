@@ -3,8 +3,6 @@
 //	NB. This is meant to be included in librtlsdr.h as part of the
 //	rtlsdr class. It's broken out this way for over all clarity.
 
-#define MAX_STR_SIZE	256
-
 typedef uint8_t usbportnums[ MAX_USB_PATH ];
 
 protected:	//	Static functions		Dongle array handling
@@ -24,9 +22,7 @@ protected:	//	Static functions		Registry handling
 	static uint32_t WriteSingleRegistry	( int index );
 	static void WriteRegLastCatalogTime	( void );
 	static void	ReadRegistry			( void );
-	static void mergeToMaster			( Dongle& tempd
-										, int index
-										);
+	static void mergeToMaster			( Dongle& tempd );
 	static const rtlsdr_dongle_t *
 				find_known_device		( uint16_t vid
 										, uint16_t pid
@@ -81,7 +77,6 @@ private:
 										);
 
 protected:	//	Static					Registry/Dongle array
-	static CDongleArray					Dongles;
 	static time_t						lastCatalog;
 	static bool							noCatalog;
 	static bool							goodCatalog;

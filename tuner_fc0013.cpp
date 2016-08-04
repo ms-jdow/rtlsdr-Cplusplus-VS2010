@@ -88,7 +88,7 @@ int	fc0013Tuner::get_tuner_gains( const int **out_ptr
 
 int fc0013Tuner::set_gain_mode( int manual )
 {
-	return set_gain_mode( manual );
+	return fc0013_set_gain_mode( manual );
 }
 
 int	fc0013Tuner::get_xtal_frequency( uint32_t& xtalfreq )
@@ -155,6 +155,7 @@ int fc0013Tuner::fc0013_init( void )
 			   Middle Gain: 0x48, Low Gain: 0x40 */
 		0x01,	/* reg. 0x15 */
 	};
+
 #if 0
 	switch ( rtldev->rtlsdr_get_tuner_clock())
 	{
@@ -570,6 +571,9 @@ int fc0013Tuner::fc0013_set_gain_mode( int manual )
 {
 	int ret = 0;
 	uint8_t tmp = 0;
+
+	//	For now set GAIN_MODE_MANUAL if not GAIN_MODE_AGC
+	manual = min( GAIN_MODE_MANUAL, manual );
 
 	ret |= fc0013_readreg( 0x0d, &tmp );
 

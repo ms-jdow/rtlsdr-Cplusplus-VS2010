@@ -11,13 +11,17 @@
 #include "Recognized Dongles.h"
 #include "MyMutex.h"
 #include "IRtlSdr.h"
+#include "SharedMemoryFile.h"
 
 #define FIR_LEN 16
+
 class e4kTuner;
 class fc0012Tuner;
 class fc0013Tuner;
 class fc2580Tuner;
 class r82xxTuner;
+
+typedef BYTE usbpath_t[ MAX_USB_PATH ];
 
 //	Stages is a private mode to emphasize per stage control.
 #define MAX_TUNER_GAIN_MODES GAIN_MODE_STAGES
@@ -125,7 +129,7 @@ public:
 											, char *product
 											, char *serial
 											);
-	int			rtlsdr_get_usb_strings		( CString& manufact
+	int			rtlsdr_get_usb_cstrings		( CString& manufact
 											, CString& product
 											, CString& serial
 											);
@@ -174,11 +178,13 @@ public:
 protected:
 	static void	GetCatalog					( void );
 	static bool	reinitDongles				( void );
+	static bool TestMaster					( void );
 
 private:
 	void		ClearVars					( void );
 
 private:
+//	static SharedMemoryFile					SharedDongleData;
 	/* rtl demod context */
 	uint32_t								rate; /* Hz */
 	uint32_t								rtl_xtal; /* Hz */
@@ -201,6 +207,8 @@ private:
 
 	int										tuner_initialized;
 	int										spectrum_inversion;
+	int										active_index;
+
 	static int								inReinitDongles;
 
 private:

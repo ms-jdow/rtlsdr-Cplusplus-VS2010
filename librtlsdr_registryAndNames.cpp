@@ -4,7 +4,6 @@
 //	This file coordinates the dongle database and its Windows Registry
 //	use for the rtlsdr class in the rtlsdr.dll project.
 
-CDongleArray	rtlsdr::Dongles;
 time_t			rtlsdr::lastCatalog = 0;
 bool			rtlsdr::noCatalog = false;
 bool			rtlsdr::goodCatalog = false;
@@ -32,18 +31,18 @@ void rtlsdr::FillDongleArraysAndComboBox( CDongleArray * da
 		CMutexLock cml( dongle_mutex );
 
 		INT_PTR comboselected = -1;
-		for( INT_PTR index = 0; index < Dongles.GetSize(); index++ )
+		for( DWORD index = 0; index < RtlSdrArea->activeEntries; index++ )
 		{
-			Dongle* dongle = &Dongles.GetAt( index );
+			Dongle* dongle = &Dongles[ index ];
 			if ( dongle->found < 0 )
 				continue;
 			if ( combo )
 			{
 				CStringA msg;
 				if (dongle->busy )
-					msg.Format( "* %s,%s,sn %s", dongle->manfIdCStr, dongle->prodIdCStr, dongle->sernIdCStr );
+					msg.Format( "* %s,%s,sn %s", dongle->manfIdStr, dongle->prodIdStr, dongle->sernIdStr );
 				else
-					msg.Format( "%s, %s, sn %s", dongle->manfIdCStr, dongle->prodIdCStr, dongle->sernIdCStr );
+					msg.Format( "%s, %s, sn %s", dongle->manfIdStr, dongle->prodIdStr, dongle->sernIdStr );
 				combo->AddString( CString( msg ));
 				if ( selected && ( msg == selected ))
 					comboselected = index;
@@ -67,19 +66,23 @@ bool rtlsdr::GetDongleIdString( CString& string, int devindex )
 	CMutexLock cml( dongle_mutex );
 
 	string.Empty();
-	if ((DWORD) devindex >= (DWORD) Dongles.GetSize())
+	if ((DWORD) devindex >= RtlSdrArea->activeEntries )
 		return false;
 	rtlsdr::GetCatalog();
 	if ( goodCatalog )
 	{
 		Dongle* dongle = NULL;
 		int tindex = 0;
-		for( INT_PTR i = 0; i < Dongles.GetSize(); i++ )
+		for( DWORD i = 0; i < RtlSdrArea->activeEntries; i++ )
 		{
 			if ( Dongles[ i ].found == devindex )
 			{
 				dongle = &Dongles[ i ];
-				string.Format( _T( "%s, %s, %s" ), dongle->manfIdCStr, dongle->prodIdCStr, dongle->sernIdCStr );
+				string.Format( _T( "%s, %hs, %hs" )
+							 , dongle->manfIdStr
+							 , dongle->prodIdStr
+							 , dongle->sernIdStr
+							 );
 				return true;
 			}
 		}
@@ -102,7 +105,7 @@ int rtlsdr::FindDongleByIdString( LPCTSTR source )
 	if ( loc > 0 )
 		test = test.Left( loc );
 	int found = 0;
-	for ( int i = 0; i < (int) Dongles.GetSize(); i++ )
+	for ( int i = 0; i < (int) RtlSdrArea->activeEntries; i++ )
 	{
 		CString tstring;
 		GetDongleIdString( tstring, i );
@@ -152,7 +155,7 @@ void rtlsdr::WriteRegistry( void )
 		DWORD debugfile = true;
 		// So now we read values we need.
 		CString name;
-		for ( INT_PTR i = 0; i < Dongles.GetSize(); i++ )
+		for ( DWORD i = 0; i < RtlSdrArea->activeEntries; i++ )
 		{
 			name.Format( _T( "Dongle%d" ), i );
 			Return returned;
@@ -165,10 +168,11 @@ void rtlsdr::WriteRegistry( void )
 								  , sizeof( Return )
 								  );
 			if ( resVal != ERROR_SUCCESS )
-				TRACE( L" error setting ThreadPriority value!" );
+				TRACE( _T( " error setting ThreadPriority value!" ));
 		}
 		RegCloseKey( hRtlsdrKey );
 	}
+	RtlSdrArea->MasterUpdate = true;
 }
 
 //	Call only from inside a mutex lock.
@@ -215,10 +219,11 @@ uint32_t rtlsdr::WriteSingleRegistry( int index )
 							  , sizeof( Return )
 							  );
 		if ( resVal != ERROR_SUCCESS )
-			TRACE( L" error resetting %s data %d!", name, resVal );
+			TRACE( _T( " error resetting %s data %d!" ), name, resVal );
 		RegCloseKey( hRtlsdrKey );
 		WriteRegLastCatalogTime();
 	}
+	RtlSdrArea->MasterUpdate = true;
 	return resVal;
 }
 
@@ -258,13 +263,16 @@ void rtlsdr::WriteRegLastCatalogTime( void )
 							  , sizeof( __int64 )
 							  );
 		if ( resVal != ERROR_SUCCESS )
-			TRACE( L" error resetting LastCatalog data %d!", resVal );
+			TRACE( _T( "error resetting LastCatalog data %d!" ), resVal );
 		RegCloseKey( hRtlsdrKey );
 	}
 }
 
 void rtlsdr::ReadRegistry( void )
 {
+	if ( TestMaster())
+		return;					//  We have known good data already.
+
 	CMutexLock cml( registry_mutex );
 
 	DWORD   resVal;
@@ -288,7 +296,9 @@ void rtlsdr::ReadRegistry( void )
 		DWORD debugfile = true;
 		// So now we read values we need.
 		CString name;
-		Dongles.RemoveAll();
+		memset( Dongles, 0, sizeof( Dongle ) * MAX_DONGLES );
+		RtlSdrArea->activeEntries = 0;
+//		Dongles.RemoveAll();
 		for ( INT_PTR i = 0; ; i++ )
 		{
 			name.Format( _T( "Dongle%d" ), i );
@@ -307,7 +317,10 @@ void rtlsdr::ReadRegistry( void )
 			{
 				// Fill out a description
 				Dongle dongle( returned );
-				Dongles.Add( dongle );	// Implicit Return = Dongle from Arrays
+				//	Some protection for a messed up registry.
+				if ( returned.pid != returned.vid )
+					Dongles[ RtlSdrArea->activeEntries++ ] = returned;
+				Size = 0;
 			}
 			else
 			{
@@ -329,8 +342,7 @@ void rtlsdr::ReadRegistry( void )
 		if (( resVal == ERROR_SUCCESS )
 		&&	( keytype == REG_QWORD ))
 		{
-			// Fill out a description
-			Dongles.Add( returned );	// Implicit Return = Dongle from Arrays
+			// Implicit Dongle = Return
 			lastCatalog = max( value, 1 );
 		}
 		else
@@ -340,45 +352,31 @@ void rtlsdr::ReadRegistry( void )
 	}
 }
 
-void rtlsdr::mergeToMaster( Dongle& tempd, int index )
+void rtlsdr::mergeToMaster( Dongle& tempd )
 {
 	CMutexLock cml( registry_mutex );
 
-	for ( INT_PTR mast = 0; mast < Dongles.GetSize(); mast++ )
+	for ( DWORD mast = 0; mast < RtlSdrArea->activeEntries; mast++ )
 	{
-		Dongle *md = &Dongles[ mast ];
-		if ( *md == tempd )
+		Dongle md = Dongles[ mast ];
+		if ( tempd == md )
 		{
-			md->busy = tempd.busy;
-			md->found = tempd.found;
-			if ( !tempd.busy )
+			md.busy = tempd.busy;
+			md.found = tempd.found;
+			if ( !tempd.duplicated )
+				memcpy( md.usbpath, tempd.usbpath, MAX_USB_PATH );
+			else
 			{
-				md->manfIdCStr   = tempd.manfIdCStr;
-				md->prodIdCStr   = tempd.prodIdCStr;
-				md->sernIdCStr   = tempd.sernIdCStr;
-				rtlsdr dev;
-				int ret = dev.rtlsdr_open((uint32_t) md->found );
-				if ( ret == 0 )
+				if ( memcmp( md.usbpath, tempd.usbpath, MAX_USB_PATH ) != 0 )
 				{
-					md->tunerType = dev.rtlsdr_get_tuner_type();
-					dev.rtlsdr_close();
+					continue;
 				}
 			}
 			return;
 		}
 	}
 
-	if ( !tempd.busy )
-	{
-		rtlsdr dev;
-		int ret = dev.rtlsdr_open( index );
-		if ( ret == 0 )
-		{
-			tempd.tunerType = dev.rtlsdr_get_tuner_type();
-			dev.rtlsdr_close();
-		}
-	}
-	Dongles.Add( tempd );
+	Dongles[ RtlSdrArea->activeEntries++ ] = tempd;
 }
 
 
@@ -390,7 +388,7 @@ const char* rtlsdr::find_requested_dongle_name( libusb_context *ctx
 	libusb_device **list;
 	struct libusb_device_descriptor dd;
 	const rtlsdr_dongle_t *dongle = NULL;
-	static CStringA donglename;
+	const char * donglename;
 
 	uint32_t cnt = (uint32_t) libusb_get_device_list( ctx, &list );
 
@@ -403,10 +401,16 @@ const char* rtlsdr::find_requested_dongle_name( libusb_context *ctx
 		if ( dongle )
 		{
 			BYTE portnums[ MAX_USB_PATH ] = { 0 };
-			int portcnt = libusb_get_port_numbers( list[ i ], portnums, MAX_USB_PATH );
+			int portcnt = libusb_get_port_numbers( list[ i ]
+												 , portnums
+												 , MAX_USB_PATH
+												 );
 			if ( portcnt > 0 )
 			{
-				if ( memcmp( portnums, &Dongles[ index ].usbpath, portcnt ) == 0 )
+				if ( memcmp( portnums
+						   , &Dongles[ index ].usbpath
+						   , portcnt
+						   ) == 0 )
 					break;
 			}
 		}
@@ -418,7 +422,7 @@ const char* rtlsdr::find_requested_dongle_name( libusb_context *ctx
 	if ( dongle == NULL )
 	{
 		busy = true;
-		if (( INT_PTR ) index < Dongles.GetSize())
+		if ((DWORD) index < (DWORD) RtlSdrArea->activeEntries )
 		{
 			//	Hail Mary - and figure the dongle is busy.
 			dongle = find_known_device( Dongles[ index ].vid, Dongles[ index ].pid );
@@ -427,13 +431,14 @@ const char* rtlsdr::find_requested_dongle_name( libusb_context *ctx
 			return "";
 	}
 
-	if ( busy )//|| test_busy( index )) Cannot do test_busy here because dev already open.
+	donglename = dongle->name;
+	if ( !busy )//&& !test_busy( index )) Cannot do test_busy here because dev already open.
 	{
-		TRACE( "Dongle %d is busy or not present\n", index );
-		donglename.Format( "* %s", dongle->name );
-		return donglename;
+		//  Skip past the "* " busy indicator.
+		donglename += 2;
 	}
-	return dongle->name;
+	
+	return donglename;
 }
 
 
@@ -456,7 +461,7 @@ int rtlsdr::open_requested_device( libusb_context *ctx
 		libusb_get_device_descriptor( list[ i ], &dd );
 
 		if (( find_known_device( dd.idVendor, dd.idProduct ) )
-		&&	( index < (uint32_t) Dongles.GetSize()))
+		&&	( index < (uint32_t) RtlSdrArea->activeEntries ))
 		{
 			BYTE portnums[ MAX_USB_PATH ] = { 0 };
 			int portcnt = libusb_get_port_numbers( list[ i ]
@@ -656,12 +661,18 @@ int rtlsdr::FullEepromParse( const eepromdata& data
 	//	Simply preserve these bits for writing. We do not use them in the registry.
 
 	//	Get the strings
-	int r = GetEepromStrings( data
-							, &tdongle.manfIdCStr
-							, &tdongle.prodIdCStr
-							, &tdongle.sernIdCStr
+	int r = GetEepromStrings( (BYTE*) data
+							, sizeof( eepromdata )
+							, tdongle.manfIdStr
+							, tdongle.prodIdStr
+							, tdongle.sernIdStr
 							);
-
+	int len = (int) strnlen_s( tdongle.manfIdStr, MAX_STR_SIZE );
+	memset( &tdongle.manfIdStr[ len ], 0, MAX_STR_SIZE - len );
+	len = (int) strnlen_s( tdongle.prodIdStr, MAX_STR_SIZE );
+	memset( &tdongle.prodIdStr[ len ], 0, MAX_STR_SIZE - len );
+	len = (int) strnlen_s( tdongle.sernIdStr, MAX_STR_SIZE );
+	memset( &tdongle.sernIdStr[ len ], 0, MAX_STR_SIZE - len );
 	//	Get port nums for where the dongle is.
 	libusb_device *	device       = libusb_get_device( devh );
 	usbportnums portnums = { 0 };
@@ -704,17 +715,17 @@ int rtlsdr::SafeFindDongle( const Dongle& tdongle )
 {
 //	CMutexLock cml( registry_mutex );	// Always done within this lock
 
-	if ( Dongles.GetSize() == 0 )
+	if ( RtlSdrArea->activeEntries == 0 )
 		ReadRegistry();
 
-	for ( int entry = 0; entry < Dongles.GetSize(); entry++ )
+	for ( DWORD entry = 0; entry < RtlSdrArea->activeEntries; entry++ )
 	{
 		//	Make sure the dongle we're testing is marked not busy.
 		bool donglebusy = Dongles[ entry ].busy;
 		Dongles[ entry ].busy = false;
-		bool busy = tdongle == Dongles[ entry ];
+		bool ourboy  = tdongle == Dongles[ entry ];
 		Dongles[ entry ].busy = donglebusy;
-		if ( busy )
+		if ( ourboy )
 		{
 			return entry;
 		}
@@ -779,12 +790,16 @@ int rtlsdr::GetDongleIndexFromNames( const CString& manufact
 								   , const CString& serial
 								   )
 {
-	for( int i = 0; i < Dongles.GetSize(); i++ )
+	for( DWORD i = 0; i < RtlSdrArea->activeEntries; i++ )
 	{
 		Dongle *dingle = &Dongles[ i ];
-		if (( dingle->manfIdCStr == manufact )
-		&&	( dingle->prodIdCStr == product )
-		&&	( dingle->sernIdCStr == serial ))
+		//	possible TCHAR fix.
+		CString manfIdStr( dingle->manfIdStr );
+		CString prodIdStr( dingle->prodIdStr );
+		CString sernIdStr( dingle->sernIdStr );
+		if (( manfIdStr == manufact )
+		&&	( prodIdStr == product )
+		&&	( sernIdStr == serial ))
 			return i;
 	}
 	return -1;
@@ -794,7 +809,7 @@ int rtlsdr::GetDongleIndexFromNames( const CString& manufact
 int rtlsdr::GetDongleIndexFromDongle( const Dongle dongle )
 {
 	CMutexLock cml( dongle_mutex );
-	for( int i = 0; i < Dongles.GetSize(); i++ )
+	for( DWORD i = 0; i < RtlSdrArea->activeEntries; i++ )
 	{
 		if ( Dongles[ i ] == dongle )
 			return i;
@@ -817,9 +832,10 @@ int	rtlsdr::srtlsdr_eep_img_from_Dongle( eepromdata&	dat
 	//	6, 7, 8 = 0;
 	uint8_t pos = STR_OFFSET;
 
-	int count = regentry->manfIdCStr.GetLength();
+	CString manfIdCStr( regentry->manfIdStr );
+	int count = manfIdCStr.GetLength();
 	uint8_t size = (uint8_t) (( count + 1 ) * sizeof( wchar_t ));
-	LPCTSTR chars = (LPCTSTR) regentry->manfIdCStr;
+	LPCTSTR chars = (LPCTSTR) manfIdCStr;
 	dat[ pos ] = size;
 	dat[ pos + 1 ] = 0x03;	// mandatory
 	if ( sizeof( eepromdata ) < ( pos + size + 4 ))	// +4 allows 2 empty strings
@@ -834,9 +850,10 @@ int	rtlsdr::srtlsdr_eep_img_from_Dongle( eepromdata&	dat
 	}
 	pos += size;
 
-	count = regentry->prodIdCStr.GetLength();
+	CString prodIdCStr( regentry->prodIdStr );
+	count = prodIdCStr.GetLength();
 	size = (uint8_t) (( count + 1 ) * sizeof( wchar_t ));
-	chars = (LPCTSTR) regentry->prodIdCStr;
+	chars = (LPCTSTR) prodIdCStr;
 	dat[ pos ] = size;
 	dat[ pos + 1 ] = 0x03;	// mandatory
 	if ( sizeof( eepromdata ) < ( pos + size + 2 ))	// +2 allows 1 empty strings
@@ -851,9 +868,10 @@ int	rtlsdr::srtlsdr_eep_img_from_Dongle( eepromdata&	dat
 	}
 	pos += size;
 
-	count = regentry->sernIdCStr.GetLength();
+	CString sernIdCStr( regentry->sernIdStr );
+	count = sernIdCStr.GetLength();
 	size = (uint8_t) (( count + 1 ) * sizeof( wchar_t ));
-	chars = (LPCTSTR) regentry->sernIdCStr;
+	chars = (LPCTSTR) sernIdCStr;
 	dat[ pos ] = size;
 	dat[ pos + 1 ] = 0x03;	// mandatory
 	if ( sizeof( eepromdata ) < ( pos + size ))

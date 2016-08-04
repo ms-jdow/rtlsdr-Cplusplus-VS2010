@@ -1,5 +1,3 @@
-// IRtlSdr.h
-
 #pragma once
 
 #if !defined SDRDAPI
@@ -8,6 +6,8 @@
 
 #define EEPROM_SIZE		256
 typedef uint8_t eepromdata[ EEPROM_SIZE ];
+#define STR_OFFSET		9
+
 
 class /*SDRDAPI*/ IRtlSdr
 {
@@ -103,7 +103,7 @@ public:
 											, char *serial
 											) PURE;
 	virtual
-	int			rtlsdr_get_usb_cstrings		( CString& manufact
+	int			rtlsdr_get_usb_strings		( CString& manufact
 											, CString& product
 											, CString& serial
 											) PURE;
@@ -143,7 +143,7 @@ public:
 											, char *serial
 											) PURE;
 	virtual
-	int			rtlsdr_get_device_usb_cstrings
+	int			rtlsdr_get_device_usb_strings
 											( uint32_t index
 											, CString& manufact
 											, CString& product

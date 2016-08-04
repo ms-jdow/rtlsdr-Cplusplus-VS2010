@@ -4,6 +4,9 @@
 //
 
 #pragma once
+
+#define RELEASE_DEBUG_OUT	0
+
 #ifndef VC_EXTRALEAN
 #define VC_EXTRALEAN            // Exclude rarely-used stuff from Windows headers
 #endif
@@ -84,3 +87,11 @@ typedef unsigned __int32  uint32_t;
 #define MHZ( x )	(( x ) * 1000 * 1000)
 #define KHZ( x )	(( x ) * 1000 )
 
+#define SELF_SHARED_MEMORY
+
+
+#if RELEASE_DEBUG_OUT && defined( NDEBUG )
+	#undef TRACE
+	extern void AfxMsgDbgOut( LPCTSTR lpszFormat, ...);
+	#define TRACE AfxMsgDbgOut 
+#endif

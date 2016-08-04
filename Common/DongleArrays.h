@@ -3,6 +3,7 @@
 #pragma once
 
 #define	MAX_USB_PATH	7
+#define MAX_STR_SIZE	256
 
 class Dongle;
 
@@ -27,7 +28,7 @@ public:
 		memcpy( manfIdStr, r.manfIdStr, 3 * sizeof( manfIdStr ));
 		vid           = r.vid;
 		pid           = r.pid;
-		NotNeeded     = r.NotNeeded;
+		duplicated    = r.duplicated;
 		busy          = r.busy;
 		found         = r.found;
 		Spare         = r.Spare;
@@ -37,13 +38,13 @@ public:
 	void operator = ( const Dongle& d );
 
 	//	Make sure these are all null terminated.
-	BYTE    manfIdStr[ 256 ];			//	Null terminated Manufacturer ID string
-	BYTE	prodIdStr[ 256 ];			//	Null terminated Product ID string
-	BYTE	sernIdStr[ 256 ];			//	Null terminated Serial Number ID string
+	BYTE    manfIdStr[ MAX_STR_SIZE ];	//	Null terminated Manufacturer ID string
+	BYTE	prodIdStr[ MAX_STR_SIZE ];	//	Null terminated Product ID string
+	BYTE	sernIdStr[ MAX_STR_SIZE ];	//	Null terminated Serial Number ID string
 	WORD	vid;						//	Vendor ID word
 	WORD	pid;						//	Product ID word.
 	BYTE	usbpath[ MAX_USB_PATH ];	//	Stores USB path through hubs to device
-	BYTE	NotNeeded;					//	LibUsb index for this device.
+	bool	duplicated;					//	LibUsb index for this device.
 	BYTE	busy;						//	Maintain file format.
 	BYTE	found;
 	BYTE	Spare;
@@ -55,10 +56,11 @@ class Dongle
 public:
 	Dongle()
 	{
-		busy     = false;
-		vid      = 0;
-		pid      = 0;
-		found    = false;
+		busy       = false;
+		vid        = 0;
+		pid        = 0;
+		found      = false;
+		duplicated = false;
 	}
 
 	void Clear( void )
@@ -68,9 +70,10 @@ public:
 		pid		      = 0;
 		tunerType     = 0;
 		found         = -1;
-		manfIdCStr.Empty();
-		prodIdCStr.Empty();
-		sernIdCStr.Empty();
+		duplicated    = false;
+		memset( manfIdStr, 0, MAX_STR_SIZE );
+		memset( prodIdStr, 0, MAX_STR_SIZE );
+		memset( sernIdStr, 0, MAX_STR_SIZE );
 		memset( usbpath, 0, sizeof( usbpath ));
 	}
 
@@ -92,9 +95,10 @@ public:
 		pid		      = r.pid;
 		tunerType     = r.tunerType;
 		found         = -1;
-		manfIdCStr    = r.manfIdStr;
-		prodIdCStr    = r.prodIdStr;
-		sernIdCStr    = r.sernIdStr;
+		duplicated    = r.duplicated;
+		memcpy( &manfIdStr, r.manfIdStr, MAX_STR_SIZE );
+		memcpy( &prodIdStr, r.prodIdStr, MAX_STR_SIZE );
+		memcpy( &sernIdStr, r.sernIdStr, MAX_STR_SIZE );
 		memcpy( usbpath, r.usbpath, sizeof( usbpath ));
 	}
 
@@ -111,9 +115,9 @@ public:
 		}
 		else
 		{
-			return ( manfIdCStr  == d.manfIdCStr )
-				&& ( prodIdCStr  == d.prodIdCStr )
-				&& ( sernIdCStr  == d.sernIdCStr )
+			return ( strcmp( manfIdStr, d.manfIdStr ) == 0 )
+				&& ( strcmp( prodIdStr, d.prodIdStr ) == 0 )
+				&& ( strcmp( sernIdStr, d.sernIdStr ) == 0 )
 				&& ( vid         == d.vid )
 				&& ( pid         == d.pid )
 				;
@@ -125,15 +129,16 @@ public:
 		return !( *this == d );
 	}
 
-	CString manfIdCStr;					//	Null terminated Manufacturer ID string
-	CString prodIdCStr;					//	Null terminated Product ID string
-	CString sernIdCStr;					//	Null terminated Serial Number ID string
+	char	manfIdStr[ MAX_STR_SIZE ];	//	Null terminated Manufacturer ID string
+	char	prodIdStr[ MAX_STR_SIZE ];	//	Null terminated Product ID string
+	char	sernIdStr[ MAX_STR_SIZE ];	//	Null terminated Serial Number ID string
 	WORD	vid;						//	Manufacturer ID word
 	WORD	pid;						//	Product ID word.
 	BYTE	usbpath[ 7 ];				//	Stores USB path through hubs to device
 	bool	busy;						//	Device is busy if true.
 	BYTE	tunerType;					//	Type of tuner per enum rtlsdr_tuner
 	char	found;						//	RTLSDR index for merging data
+	bool	duplicated;					//	Is this entry a near duplicate?
 };
 
 __inline void Return::operator = ( const Dongle& d )
@@ -145,11 +150,11 @@ __inline void Return::operator = ( const Dongle& d )
 	found	      = d.found;
 	Spare         = 0;
 	tunerType     = d.tunerType;
-	NotNeeded     = 0;
+	duplicated    = d.duplicated;
 
-	memcpy( manfIdStr, CStringA( d.manfIdCStr ), d.manfIdCStr.GetLength());
-	memcpy( prodIdStr, CStringA( d.prodIdCStr ), d.prodIdCStr.GetLength());
-	memcpy( sernIdStr, CStringA( d.sernIdCStr ), d.sernIdCStr.GetLength());
+	memcpy( manfIdStr, d.manfIdStr, MAX_STR_SIZE );
+	memcpy( prodIdStr, d.prodIdStr, MAX_STR_SIZE );
+	memcpy( sernIdStr, d.sernIdStr, MAX_STR_SIZE );
 	memcpy( usbpath, d.usbpath, MAX_USB_PATH );
 }
 

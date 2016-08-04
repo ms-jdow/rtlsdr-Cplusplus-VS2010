@@ -22,3 +22,5 @@ Release
 Debug
 */Debug/*
 */Release/*
+/RtlSdr Catalog/x86
+/RtlSdr Catalog/x64
