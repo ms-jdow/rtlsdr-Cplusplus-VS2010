@@ -145,3 +145,57 @@ xx    Device 31 0x1d50 0x60a1: 0x6 0x1          AirSpy
 x     Device 30 0x1a40 0x0101: 0x7              Terminus Technology Inc. hub (extender cable)   USB 3 #3
 xx    Device 33 0x1d50 0x60a1: 0x7 0x4          AirSpy 2
 
+
+
+In reinit dongles we try to open a dongle and try to find it in the database. If
+it is not in the database and we could open it, add it. Otherwise, perhaps, let
+it float.
+
+Cases to oonsider:
+    Finding all dongles
+        cannot open the dongle -> Ignore it. Get it later.
+            if usbpath matches mark busy.... (Do NOT add to local db.)
+        can open the dongle
+            Get names
+*           duplicated names    Force a rename? What does that do to me?
+            Stuff into temp database
+
+//  So we need a de-duplicate feature in here.
+//  Name may or may not appear in masterdb
+//      name and path may or may not appear in masterdb
+//  Name may or may not be a duplicate (but appears once in masterdb)
+//      path may or may not match (Dongle may or may not be in original slot)
+
+    while ( reinit_dongles.GetSize() > 0 )
+        if exact match to masterdb
+           reinit_dongles.RemoveAt( 0 )
+           continue;
+        else if !name in masterdb
+            Add to masterdb 
+            reinit_dongles.RemoveAt( 0 )
+            continue;
+            //  Name is in db
+        else if !duplicated
+            fix path in masterdb
+            reinit_dongles.RemoveAt( 0 )
+        else
+        //  Duplicated in local db and !exact match and not in db
+        //  So we have a duplicate - let's deal with it.
+        //  It might be a set of new dongles that duplicate what we have
+        //  or it might be a new duplicate matching one entry we already have.
+        //  Suppose I increment sn by 1 and retest for matches. Repeat until
+        //  no match and add to database.
+            bool exact = false
+            while (no name match in masterdb)
+                if exact match
+                    exact = true
+                    write to dongle     should be impossible but....
+                    break
+                fi
+            elihw
+            if !exact
+                add to masterdb
+            fi
+        fi
+
+    rof

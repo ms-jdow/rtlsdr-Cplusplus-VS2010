@@ -446,6 +446,7 @@ const char* rtlsdr::find_requested_dongle_name( libusb_context *ctx
 int rtlsdr::open_requested_device( libusb_context *ctx
 								 , uint32_t index
 								 , libusb_device_handle **ldevh
+								 , bool devindex
 								 )
 {
 	libusb_device **list;
@@ -455,31 +456,38 @@ int rtlsdr::open_requested_device( libusb_context *ctx
 
 	uint32_t cnt = (uint32_t) libusb_get_device_list( ctx, &list );
 
-	for ( uint32_t i = 0; i < cnt; i++ )
+	if ( devindex )
 	{
-		device = list[ i ];
-		libusb_get_device_descriptor( list[ i ], &dd );
-
-		if (( find_known_device( dd.idVendor, dd.idProduct ) )
-		&&	( index < (uint32_t) RtlSdrArea->activeEntries ))
+		device = list[ index ];
+	}
+	else
+	{
+		for ( uint32_t i = 0; i < cnt; i++ )
 		{
-			BYTE portnums[ MAX_USB_PATH ] = { 0 };
-			int portcnt = libusb_get_port_numbers( list[ i ]
-												 , portnums
-												 , MAX_USB_PATH
-												 );
-			if ( portcnt > 0 )
+			device = list[ i ];
+			libusb_get_device_descriptor( list[ i ], &dd );
+
+			if (( find_known_device( dd.idVendor, dd.idProduct ) )
+			&&	( index < (uint32_t) RtlSdrArea->activeEntries ))
 			{
-				if ( memcmp( portnums
-						   , &Dongles[ index ].usbpath
-						   , portcnt
-						   ) == 0 )
+				BYTE portnums[ MAX_USB_PATH ] = { 0 };
+				int portcnt = libusb_get_port_numbers( list[ i ]
+													 , portnums
+													 , MAX_USB_PATH
+													 );
+				if ( portcnt > 0 )
 				{
-					break;
+					if ( memcmp( portnums
+							   , &Dongles[ index ].usbpath
+							   , portcnt
+							   ) == 0 )
+					{
+						break;
+					}
 				}
 			}
+			device = NULL;
 		}
-		device = NULL;
 	}
 
 	if ( device )
@@ -887,3 +895,44 @@ int	rtlsdr::srtlsdr_eep_img_from_Dongle( eepromdata&	dat
 
 	return pos + size;
 }
+
+
+int rtlsdr::FindInMasterDB( Dongle* dng, bool exact )
+{
+	for( int i = 0; i < (int) RtlSdrArea->activeEntries; i++ )
+	{
+		Dongle *test = &Dongles[ i ];
+		if (( strcmp( dng->manfIdStr, test->manfIdStr ) == 0 )
+		&&	( strcmp( dng->prodIdStr, test->prodIdStr ) == 0 )
+		&&	( strcmp( dng->sernIdStr, test->sernIdStr ) == 0 )
+		&&	( dng->vid == test->vid )
+		&&	( dng->pid == test->pid ))
+		{
+			if ( !exact )
+				return i;
+			else
+			if ( memcmp( dng->usbpath, test->usbpath, MAX_USB_PATH ) == 0 )
+				return i;
+		}
+		i = i;
+	}
+	return -1;
+}
+
+
+int rtlsdr::FindGuessInMasterDB( Dongle* dng )
+{
+	for( int i = 0; i < (int) RtlSdrArea->activeEntries; i++ )
+	{
+		Dongle *test = &Dongles[ i ];
+		if (( dng->vid == test->vid )
+		&&	( dng->pid == test->pid )
+		&&	( memcmp( dng->usbpath, test->usbpath, MAX_USB_PATH ) == 0 ))
+		{
+			return i;
+		}
+		i = i;
+	}
+	return -1;
+}
+

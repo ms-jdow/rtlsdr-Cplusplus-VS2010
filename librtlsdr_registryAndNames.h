@@ -35,6 +35,7 @@ protected:	//	Static functions		Registry handling
 	static int	open_requested_device	( libusb_context *ctx
 										, uint32_t index
 										, libusb_device_handle **ldevh
+										, bool devindex
 										);
 
 	static int	GetDongleIndexFromNames	( const char * manufact
@@ -64,6 +65,11 @@ protected:	//	Class functions
 										, Dongle& tdongle
 										);
 	int			SafeFindDongle			( const Dongle& tdongle );
+	static int	FindInMasterDB			( Dongle*	dng
+										, bool		exact
+										);
+	static int	FindGuessInMasterDB		( Dongle* dng );
+
 
 private:
 	int			GetEepromString			( const eepromdata& data

@@ -1,8 +1,11 @@
 #include "StdAfx.h"
 #include "RtlSdrList.h"
+#include "MyMutex.h"
 
 RtlSdrAreaDef*		RtlSdrList::RtlSdrArea = NULL;
 Dongle*				RtlSdrList::Dongles = NULL;
+
+CMyMutex			RtlSdrList::registry_mutex( _T( "RtlSdr++ Mutex" ));
 
 #define CATALOG_TIMEOUT		5		//	Not much changes in 5 seconds with dongles.
 #define STR_OFFSET			9		// EEPROM string offset.
@@ -55,7 +58,6 @@ enum blocks {
 #define DEFAULT_BUF_LENGTH	( 16 * 32 * 512 )
 
 #define EEPROM_ADDR	0xa0
-
 
 
 RtlSdrList::RtlSdrList( void )
@@ -141,6 +143,9 @@ void RtlSdrList::ReadRegistry( void )
 
 	DWORD   resVal;
 	HKEY    hRtlsdrKey	= NULL;
+
+	CMutexLock cml( registry_mutex );
+
 	// Just to be sure - clear everthing here
 
 	resVal = RegOpenKeyEx( HKEY_CURRENT_USER
@@ -223,6 +228,7 @@ void RtlSdrList::ReadRegistry( void )
 //	in the DongleArray "Add()" function.)
 void RtlSdrList::WriteRegistry( void )
 {
+	CMutexLock cml( registry_mutex );
 	DWORD   resVal;
 	HKEY    hRtlsdrKey	= NULL;
 	DWORD	status = 0;
@@ -300,6 +306,7 @@ void RtlSdrList::WriteRegistry( void )
 //	STATIC //
 uint32_t RtlSdrList::WriteSingleRegistry( int index )
 {
+	CMutexLock cml( registry_mutex );
 	DWORD   resVal;
 	HKEY    hRtlsdrKey	= NULL;
 	DWORD	status;
@@ -422,6 +429,7 @@ void RtlSdrList::reinitDongles( void )
 		Dongles[ i ].busy = false;
 	}
 
+#if 0	//	This way SORT OF works.
 	//	And clear the rest of the dongle area to 0.
 	int rtlsdr_count = RtlSdrArea->activeEntries;	// Next entry in table
 	if ( dev_count > 0 )
@@ -435,30 +443,10 @@ void RtlSdrList::reinitDongles( void )
 			const rtlsdr_dongle_t * known = find_known_device( dd.idVendor
 															 , dd.idProduct
 															 );
-#if 1		//	List ports for all USB devices on system
-			{
-				//	This works for X64 even though it's deprecated.
-				usbpath_t portnums = { 0 };
-				int cnt = libusb_get_port_path( tctx
-											  , devlist[ i ]
-											  , portnums
-											  , MAX_USB_PATH
-											  );
-				CString text;
-				text.Format( _T( "xxxxx Device %d 0x%x 0x%x:" ), i, dd.idVendor, dd.idProduct );
-				CString t2;
-				for( int g = 0; g < cnt; g++ )
-				{
-					t2.Format( _T( " 0x%x" ), portnums[ g ]);
-					text += t2;
-				}
-				text += _T( "\n" );
-				TRACE( text );
-			}
-#endif
 			if ( known == NULL )
 				continue;
 
+			//	We have a candidate. Start a "Dongle" for it.
 			Dongle dongle;
 
 			//	enter the vid, pid, etc into the record.
@@ -502,6 +490,18 @@ void RtlSdrList::reinitDongles( void )
 				memset( dongle.usbpath, 0, sizeof( usbpath_t ));
 				TRACE( "	%d:  Error %d\n", i, err );
 			}
+#if 0	// For debugging
+			CString text;
+			text.Format( _T( "xxxxx Device %d 0x%x 0x%x:" ), i, dd.idVendor, dd.idProduct );
+			CString t2;
+			for( int g = 0; g < cnt; g++ )
+			{
+				t2.Format( _T( " 0x%x" ), portnums[ g ]);
+				text += t2;
+			}
+			text += _T( "\n" );
+			TRACE( text );
+#endif
 
 			//	Try to open the device to determine busy status and perhaps
 			//	read the name.
@@ -674,7 +674,212 @@ void RtlSdrList::reinitDongles( void )
 		rval = true;
 		WriteRegistry();
 	}
+#else
+	if ( dev_count > 0 )
+	{
+		for( ssize_t i = 0; i < dev_count; i++ )
+		{
+			libusb_device_descriptor dd;
 
+			int err = libusb_get_device_descriptor( devlist[ i ], &dd );
+
+			const rtlsdr_dongle_t * known = find_known_device( dd.idVendor
+															 , dd.idProduct
+															 );
+			if ( known == NULL )
+				continue;
+
+			//	We have a candidate. Start a "Dongle" for it.
+			Dongle dongle;
+
+			//	enter the vid, pid, etc into the record.
+			dongle.vid		= dd.idVendor;
+			dongle.pid		= dd.idProduct;
+			dongle.found	= (char) i;
+
+			//	enter some "useful" default strings
+			CStringA manf;
+			CStringA prod;
+			CStringA sern;
+
+			//	Find the USB path. If it matches something from Dongles array
+			//	we (rashly) can presume a match.
+			usbpath_t portnums = { 0 };
+#if 1 || defined( PORT_PATH_WORKS_PORTNUMS_DOESNT )
+			//	This works for X64 even though it's deprecated.
+			int cnt = libusb_get_port_path( tctx
+										  , devlist[ i ]
+										  , portnums
+										  , MAX_USB_PATH
+										  );
+#else
+			//	This fails even though it is the "proper" way.
+			cnt = libusb_get_port_numbers( devlist[ i ], portnums, MAX_USB_PATH );
+#endif
+
+			if ( cnt > 0 )
+			{
+				// We have good portnums. Clear libusb messup.
+				for( int j = cnt; j < 7; j++ )
+					portnums[ j ] = 0;
+				//	enter port path into the record.
+				memcpy( dongle.usbpath, portnums, sizeof( usbpath_t ));
+			}
+			else
+			{
+				memset( dongle.usbpath, 0, sizeof( usbpath_t ));
+				TRACE( "	%d:  Error %d\n", i, err );
+			}
+#if 0	// For debugging
+			CString text;
+			text.Format( _T( "xxxxx Device %d 0x%x 0x%x:" ), i, dd.idVendor, dd.idProduct );
+			CString t2;
+			for( int g = 0; g < cnt; g++ )
+			{
+				t2.Format( _T( " 0x%x" ), portnums[ g ]);
+				text += t2;
+			}
+			text += _T( "\n" );
+			TRACE( text );
+#endif
+
+			int res = rtlsdr_open((uint32_t) i );
+			if ( res >= 0 )
+			{
+				dongle.busy = false;	//	For comparisons....
+				eepromdata testdata = { 0 };
+				res = rtlsdr_read_eeprom_raw( testdata );
+				if ( res < 0 )
+				{
+					MessageBox( 0
+							  , _T( "Cannot read EEPROM." )
+							  , _T( "EEPROM Error" )
+							  , MB_ICONEXCLAMATION
+							  );
+					continue;			//	We're screwed!
+				}
+
+				//	Parse eeprom names from raw data.
+				//	This nonsense is handy for tests below
+				char* man = manf.GetBuffer( MAX_STR_SIZE );
+				char* prd = prod.GetBuffer( MAX_STR_SIZE );
+				char* ser = sern.GetBuffer( MAX_STR_SIZE );
+				GetEepromStrings( testdata
+								, sizeof( eepromdata )
+								, man
+								, prd
+								, ser
+								);
+				manf.ReleaseBuffer();
+				prod.ReleaseBuffer();
+				sern.ReleaseBuffer();
+				memset( dongle.manfIdStr, 0, MAX_STR_SIZE );
+				memcpy( dongle.manfIdStr, manf, manf.GetLength());
+				memset( dongle.prodIdStr, 0, MAX_STR_SIZE );
+				memcpy( dongle.prodIdStr, prod, prod.GetLength());
+				memset( dongle.sernIdStr, 0, MAX_STR_SIZE );
+				memcpy( dongle.sernIdStr, sern, sern.GetLength());
+
+				//	We have it open - get the tunertype now
+				dongle.tunerType = tuner_type;
+				TRACE( "Sn dng %s\n", sern );
+				rtlsdr_close();
+				dongle.found = (int) i;
+
+				for( int t = 0; t < reinit_dongles.GetSize(); t++)
+				{
+					Dongle* test = &reinit_dongles[ t ];
+
+					if (( manf.Compare( test->manfIdStr ) == 0 )
+					&&	( prod.Compare( test->prodIdStr ) == 0 )
+					&&	( sern.Compare( test->sernIdStr ) == 0 )
+					   )
+					{
+						test->duplicated = true;
+						dongle.duplicated = true;
+					}
+				}
+				reinit_dongles.Add( dongle );
+			}
+			//	else can't open it so ignore it. We'll find it some time later.
+			else
+			{
+				//	Well, we can try for vid, pid, path match. If that matches
+				//	then "guess" this is a known dongle but leave names blank
+				//	and flag busy.
+				int dbindex;
+				if (( dbindex = FindGuessInMasterDB( &dongle )) >= 0 )
+				{
+					dongle = Dongles[ dbindex ];
+					dongle.busy = true;
+					dongle.found = (int) i;
+					reinit_dongles.Add( dongle );
+				}
+			}
+		}	//	/for
+
+		//	We're done with libusb in here.
+		libusb_free_device_list( devlist, 1 );
+		libusb_exit( tctx );
+		//	Now merge this data into our database.
+		int dbindex = -1;
+		while( reinit_dongles.GetSize() > 0 )
+		{
+			if ( reinit_dongles.GetSize() == 1 )
+				dbindex = dbindex;
+			Dongle test = reinit_dongles[ 0 ];
+			if (( dbindex = FindInMasterDB( &test, true )) >= 0 )
+			{
+				//	Simply remove it from local db - do nothing right here.
+				Dongles[ dbindex ].busy = test.busy;
+				Dongles[ dbindex ].found = test.found;
+			}
+			else
+			if (( dbindex = FindInMasterDB( &test, false )) < 0 )
+			{
+				//	Name not even present so add it to db.
+				Dongles[ RtlSdrArea->activeEntries++ ] = test;
+			}
+			else
+			if ( !test.duplicated )
+			{
+				//	Name found in DB but not duplicated. Fix masterdb path data
+				Dongle* tempd = &Dongles[ dbindex ];
+				memcpy( tempd->usbpath, test.usbpath, MAX_USB_PATH );
+				Dongles[ dbindex ].busy = test.busy;
+				Dongles[ dbindex ].found = test.found;
+			}
+			else
+			{
+				//  Duplicated in local db and !exact match and not in db
+				//  So we have a duplicate - let's deal with it.
+				//  It might be a set of new dongles that duplicate what we have
+				//  or it might be a new duplicate matching one entry we already
+				//	have. Suppose we increment sn by 1 and retest for matches.
+				//	Repeat until no match and add to database.
+				int len = (int) strlen( test.sernIdStr );
+				bool exact = false;		// True if exact match
+				if ( len > 0 )
+				{
+					do
+					{
+						test.sernIdStr[ len ]++;
+						dbindex = FindInMasterDB( &test, true );
+						if ( dbindex >= 0 )
+						{
+							exact = true;
+							//	Write fixed name to eeprom	TODOTODO
+							break;
+						}
+					} while( FindInMasterDB( &test, false ) >= 0 );
+					if ( !exact )
+						Dongles[ RtlSdrArea->activeEntries++ ] = test;
+				}
+			}
+			reinit_dongles.RemoveAt( 0 );
+		}
+	}
+#endif	//	This way SORT OF works.
 	return;
 }
 
@@ -1554,3 +1759,44 @@ void RtlSdrList::RemoveDongle( int index )
 	//	Rewrite the registry
 	WriteRegistry();
 }
+
+
+int RtlSdrList::FindInMasterDB( Dongle* dng, bool exact )
+{
+	for( int i = 0; i < (int) RtlSdrArea->activeEntries; i++ )
+	{
+		Dongle *test = &Dongles[ i ];
+		if (( strcmp( dng->manfIdStr, test->manfIdStr ) == 0 )
+		&&	( strcmp( dng->prodIdStr, test->prodIdStr ) == 0 )
+		&&	( strcmp( dng->sernIdStr, test->sernIdStr ) == 0 )
+		&&	( dng->vid == test->vid )
+		&&	( dng->pid == test->pid ))
+		{
+			if ( !exact )
+				return i;
+			else
+			if ( memcmp( dng->usbpath, test->usbpath, MAX_USB_PATH ) == 0 )
+				return i;
+		}
+		i = i;
+	}
+	return -1;
+}
+
+
+int RtlSdrList::FindGuessInMasterDB( Dongle* dng )
+{
+	for( int i = 0; i < (int) RtlSdrArea->activeEntries; i++ )
+	{
+		Dongle *test = &Dongles[ i ];
+		if (( dng->vid == test->vid )
+		&&	( dng->pid == test->pid )
+		&&	( memcmp( dng->usbpath, test->usbpath, MAX_USB_PATH ) == 0 ))
+		{
+			return i;
+		}
+		i = i;
+	}
+	return -1;
+}
+

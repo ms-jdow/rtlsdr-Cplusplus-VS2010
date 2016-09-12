@@ -50,6 +50,7 @@ protected:	// The real work.
 	static bool	test_busy					( uint32_t index );
 	int			basic_open					( uint32_t index
 											, struct libusb_device_descriptor *out_dd
+											, bool devindex
 											);
 	int			claim_opened_device			( void );
 
@@ -70,6 +71,9 @@ protected:	// The real work.
 											( char *manufact
 											, char *product
 											, char *serial
+											);
+	int			rtlsdr_open_				( uint32_t index
+											, bool devindex = true
 											);
 	
 public:

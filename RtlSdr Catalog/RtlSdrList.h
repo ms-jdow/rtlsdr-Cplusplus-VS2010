@@ -145,6 +145,10 @@ protected:
 											( eepromdata&	dat
 											, Dongle*		regentry
 											);
+	int				FindInMasterDB			( Dongle*	dng
+											, bool		exact
+											);
+	int				FindGuessInMasterDB		( Dongle* dng );
 
 	Dongle						m_dongle;
 	time_t						lastCatalog;
@@ -157,5 +161,6 @@ protected:
 
 	static RtlSdrAreaDef*		RtlSdrArea;
 	static Dongle*				Dongles;
+	static CMyMutex				registry_mutex;
 };
 
