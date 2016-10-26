@@ -277,3 +277,194 @@ RegisterInterfaceNotificationWorker(
 
     return RegisterDeviceNotification(Recipient, &dbh, Flags);
 }
+
+$(SolutionDir)SDRRadio\SDRConsole.exe
+
+20160910 changes
+1) Mark busy before safe find in write_eeprom
+2) If read_eeprom search for dongle in DB fails try path, PID, VID only
+3) Greatly revised dongle database update function in reinit_dongles.
+4) Protect registry accesses with global mutex.
+
+
+===
+
+	/* filter corner = lowest */
+	rc = r820t_write_reg_mask(priv, 0x0a, 0x0f, 0x0f);
+	if (rc < 0)
+		return rc;
+
+
+    filter_cur = 0x40 low?
+	rc = r820t_write_reg_mask(priv, 0x0a, filter_cur, 0x60);
+	if (rc < 0)
+		return rc;
+
+    /* r10[4]:low q(1'b1) */
+    0 <= fil_cal_code <= 0x0f
+	rc = r820t_write_reg_mask(priv, 0x0a,
+				  filt_q | priv->fil_cal_code, 0x1f);
+
+
+	/* filter bw=+2cap, hp=5M */
+	rc = r820t_write_reg_mask(priv, 0x0b, 0x60, 0x6f);
+	if (rc < 0)
+		return rc;
+
+    // From calibration
+	/* Set filt_cap */
+	rc = r820t_write_reg_mask(priv, 0x0b, hp_cor, 0x60);
+	if (rc < 0)
+		return rc;
+
+	/* Set BW, Filter_gain, & HP corner */
+	rc = r820t_write_reg_mask(priv, 0x0b, hp_cor, 0xef);
+	if (rc < 0)
+		return rc;
+
+    hp_cor:
+    hp_cor = 0x6a;		/* 1.7m disable, +2cap, 1.25mhz */
+    hp_cor = 0x6b;		/* 1.7m disable, +2cap, 1.0mhz */
+//  hp_cor = 0x2b;		/* 1.7m disable, +1cap, 1.0mhz */
+    hp_cor = 0x2a;		/* 1.7m disable, +1cap, 1.25mhz */
+    hp_cor = 0x0b;		/* 1.7m disable, +0cap, 1.0mhz */
+    ls nybble is BW
+    Upper part is > 0x60 mask 0-3
+
+    AirSpy uses
+     LPF    LPFA    LPFB    HPF     CF          BW
+     0x3c,  0x03,	0x00,	0x02,   10000000    //	10 MHz
+     0x31,  0x0E,	0x00,	0x0b,   10000000    //	5 MHz
+     0x28,  0x07,	0x60,	0x0d,   10000000    //	2.5 MHz
+     0x06,  0x09,	0xE0,	0x03,   10000000    //	1.25 MHz
+     0x00,  0x0F,	0xE0,	0x04,   10000000    //	.625 MHz
+            
+     0x20,  0x0F,	0x60,	0x00,   6000000,    //	6 MHz
+     0x1e,  0x01,	0x80,	0x05,   6000000,    //	3 MHz
+     0x12,  0x0D,	0x80,	0x05,   6000000,    //	1.5 MHz
+     0x06,  0x09,	0xE0,	0x06,   6000000,    //	.75 MHz
+            
+     0x08,  0x07,	0xE0,	0x00,   3000000,    //	3 MHz
+     0x07,  0x08,	0xE0,	0x04,   3000000,    //	1.5 MHz
+     0x02,  0x0D,	0xE0,	0x04,   3000000,    //	.625 MHz
+            
+     0x04,  0x0B,	0xE0,   0x00,   2500000,    //	2.5 MHz
+     0x06,  0x09,	0xE0,   0x03,   2500000,    //	1.25 MHz
+     0x06,  0x09,	0xE0,   0x04,   2500000,    //	.625 MHz
+
+    a = 0xE0 | 0x00-0x0f
+    b = 0xE0, 0x80, 0x60, 0x00 | 0x00-0x0f
+
+BW 10.000000 MHz, Reg 0x0a 0xe3, Reg 0x0B 0x0d, IF 0, decimation 0, rate 10000000
+BW 5.000000 MHz,  Reg 0x0a 0xee, Reg 0x0B 0x04, IF 0, decimation 1, rate 10000000
+BW 2.500000 MHz,  Reg 0x0a 0xe7, Reg 0x0B 0x62, IF 270000, decimation 2, rate 10000000
+BW 1.250000 MHz,  Reg 0x0a 0xe9, Reg 0x0B 0xec, IF 3500000, decimation 3, rate 10000000
+BW 0.625000 MHz,  Reg 0x0a 0xef, Reg 0x0B 0xeb, IF 3500000, decimation 4, rate 10000000
+
+BW 6.000000 MHz,  Reg 0x0a 0xef, Reg 0x0B 0x6f, IF 0, decimation 0, rate 6000000
+BW 3.000000 MHz,  Reg 0x0a 0xe1, Reg 0x0B 0x8a, IF 300000, decimation 1, rate 6000000
+BW 1.500000 MHz,  Reg 0x0a 0xed, Reg 0x0B 0x8a, IF 750000, decimation 2, rate 6000000
+BW 0.750000 MHz,  Reg 0x0a 0xe9, Reg 0x0B 0xe9, IF 1000000, decimation 3, rate 6000000
+
+BW 3.000000 MHz,  Reg 0x0a 0xe7, Reg 0x0B 0xef, IF 0, decimation 0, rate 3000000
+BW 1.500000 MHz,  Reg 0x0a 0xe8, Reg 0x0B 0xeb, IF -250000, decimation 1, rate 3000000
+BW 0.625000 MHz,  Reg 0x0a 0xed, Reg 0x0B 0xeb, IF -300000, decimation 2, rate 3000000
+
+BW 2.500000 MHz,  Reg 0x0a 0xeb, Reg 0x0B 0xef, IF 0, decimation 0, rate 2500000
+BW 1.250000 MHz,  Reg 0x0a 0xe9, Reg 0x0B 0xec, IF -250000, decimation 1, rate 2500000
+BW 0.625000 MHz,  Reg 0x0a 0xe9, Reg 0x0B 0xeb, IF -300000, decimation 2, rate 2500000
+
+    Leif
+    a = 0xEF
+    b = 0xE7-0xef, 0x51     - 51 seems odd....
+
+    So
+    lpfa = 0xe0 | 0x10 | 0x00..0x0f
+    lpfb = 0xE0, 0x80, 0x60, 0x00 
+    hpfb = 0x00-0x11
+    filtq = 0x10
+
+    regA = 0xe0 | filtq | lpfa
+    regB = lpfb | hpfb
+
+    bw      rega    regb    if
+    2100k   ef      52      4750k
+    1800k
+
+
+    Leif BW         with        without
+    300 kHz EF E7 if 2050       2050
+    400 kHz EF E8 if 2000-1975  2050
+    550 kHz EF E9 if 1925       2050
+    700 kHz EF EA if 1850       2050
+    1.0 kHz EF EB if 1700-1750  2050
+    1.2 kHz EF EC if 1425       1750
+    1.3 kHz EF ED if 1400       1750
+    1.6 kHz EF EF if 1200               really 1.5 MHz at 3dB
+    2.2 kHz EF 51 if 
+
+    mutability
+    1.9     FF 6B if 3570
+    tweaked (more gain)
+    1.9     FF 0e if 3575
+
+    2.1     FF 0E if 1900
+            EF 0E ...
+    2.0     EF 8E if 1700
+    1.85    EF 8D if 1700
+    1.75    EF 8C if 1825
+    1.6     EF 8B if 1950
+    1.3     EF 8A if 2100
+    1.1     EF 89 if 2150
+    0.95    EF 88 if 2200
+    0.7     EF 87 if 2325
+
+    1.3     EF AB if 1750
+    0.8     EF AA if 1875
+    0.65    EF A9 if 1950
+    0.55    ED EA of 1750
+    0.45    EF E9 if 1825
+    0.25    EF E8 if 1900
+
+
+    So what do we use?
+xx  2.1     FF 0E if 1900
+    2.0     EF 8E if 1700
+    1.85    EF 8D if 1700
+    1.75    EF 8C if 1825
+    1.6     EF 8B if 1950
+xx  1.3b    EF AB if 1750
+    1.1     EF 89 if 2150
+ x  0.95    EF 88 if 2200
+x   0.8     EF AA if 1875
+ x  0.7     EF 87 if 2325
+    0.65    EF A9 if 1950
+ x  0.55    ED EA of 1750
+xx  0.45    EF E9 if 1825
+xx  0.25    EF E8 if 1900
+
+struct
+{
+    DWORD   Bandwidth,
+    DWORD   IfFreq,
+    BYTE    Reg0A,
+    BYTE    reg0B,
+};
+
+
+
+RTLSDR_API int rtlsdr_get_tuner_bandwidths(rtlsdr_dev_t *dev, int *bandwidths);
+RTLSDR_API int rtlsdr_set_tuner_bandwidth(rtlsdr_dev_t *dev, int bandwidth);
+RTLSDR_API int rtlsdr_get_bandwidth_set_name( rtlsdr_dev_t *dev
+                                            , int nSet
+                                            , char* pString
+                                            );
+RTLSDR_API int rtlsdr_set_bandwidth_set( rtlsdr_dev_t *dev, int nSet ); 
+#if defined( SET_SPECIAL_FILTER_VALUES )    // For testing
+RTLSDR_API int rtlsdr_set_if_values     ( rtlsdr_dev_t *dev
+                                        , BYTE          regA
+                                        , BYTE          regB
+                                        , DWORD         ifFreq
+                                        );
+
+#endif

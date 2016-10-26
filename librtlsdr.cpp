@@ -84,8 +84,9 @@ static const int fir_default[ FIR_LEN ] =
 };
 
 int rtlsdr::inReinitDongles = false;
+//SharedMemoryFile	rtlsdr::SharedDongleData;
 
-rtlsdr::rtlsdr()
+rtlsdr::rtlsdr( void )
 	: rate( 0 )
 	, rtl_xtal( 0 )
 	, direct_sampling ( 0 )
@@ -95,10 +96,10 @@ rtlsdr::rtlsdr()
 	, freq( 0 )
 	, offs_freq( 0 )
 	, effective_freq( 0 )
+	, nominal_if_freq( 0 )
 	, corr( 0 )
 	, gain( 0 )
 	, gain_mode( GAIN_MODE_MANUAL )
-	, driver_active( false )
 	, tuner_initialized( -1 )
 	, spectrum_inversion( 0 )
 	// librtlsdr_dongle_comms
@@ -119,12 +120,12 @@ rtlsdr::rtlsdr()
 	//	librtlsdr_registryAndNames
 	//		no entries
 {
-	if ( RtlSdrArea == NULL )
+//	if ( RtlSdrArea == NULL )
 	{
 		if ( SharedDongleData.active )
 		{
 			RtlSdrArea = SharedDongleData.sharedMem;
-			Dongles = SharedDongleData.sharedMem->dongleArray;
+			Dongles = RtlSdrArea->dongleArray;
 		}
 		else
 		{
@@ -173,7 +174,6 @@ void rtlsdr::ClearVars( void )
 	effective_freq = 0;
 	corr = 0;
 	gain = 0;
-	driver_active = false;
 	tuner_initialized = -1;
 	spectrum_inversion = 0;
 	//	librtlsdr_dongle_comms
@@ -243,7 +243,8 @@ int rtlsdr::rtlsdr_set_fir( void )
 	return 0;
 }
 
-int rtlsdr::rtl2832_set_if_freq( uint32_t in_freq, uint32_t *freq_out )
+/*	Protected function not visible outside. Currently only used by R820x */
+int rtlsdr::rtlsdr_set_if_freq( uint32_t in_freq, uint32_t *freq_out )
 {
 	uint32_t rtl_xtal;
 	int32_t if_freq;
@@ -263,8 +264,8 @@ int rtlsdr::rtl2832_set_if_freq( uint32_t in_freq, uint32_t *freq_out )
 	if_freq = (int32_t) (( rtl_xtal / 2 + (uint64_t) in_freq * TWO_POW( 22 )) / rtl_xtal ) * ( -1 );
 	if ( if_freq <= -0x200000 )			//	Effectively rtl_xtal/2 nominally 14.4 MHz
 	{
-		fprintf(stderr, "rtl2832_set_if_freq(): %u Hz out of range for downconverter if_freq = %d\n", in_freq, if_freq);
-		TRACE( "rtl2832_set_if_freq(): %u Hz out of range for downconverter if_freq = %d\n", in_freq, if_freq);
+		fprintf(stderr, "rtlsdr_set_if_freq(): %u Hz out of range for downconverter if_freq = %d\n", in_freq, if_freq);
+		TRACE( "rtlsdr_set_if_freq(): %u Hz out of range for downconverter if_freq = %d\n", in_freq, if_freq);
 		return -2;
 	}
 
@@ -286,6 +287,15 @@ int rtlsdr::rtlsdr_set_sample_freq_correction( int ppm )
 {
 	int r = 0;
 	uint8_t tmp;
+	//	Protect the math below.
+	if ( abs( ppm ) > 250 )
+	{
+		if ( ppm > 0 )
+			ppm = 250;
+		else
+			ppm = -250;
+	}
+
 	int16_t offs = ( int16_t ) ( ppm * ( -1 ) * TWO_POW( 24 ) / 1000000 );
 
 	rtlsdr_set_i2c_repeater( 0 );
@@ -302,7 +312,7 @@ int rtlsdr::rtlsdr_set_xtal_freq( uint32_t rtl_freq, uint32_t tuner_freq )
 {
 	int r = 0;
 
-	if (!devh)
+	if ( !devh )
 		return -1;
 
 	rtlsdr_set_i2c_repeater( 0 );
@@ -643,13 +653,14 @@ int rtlsdr:: set_spectrum_inversion( int inverted )
 int rtlsdr::rtlsdr_set_center_freq( uint32_t in_freq )
 {
 	int r = -1;
-	uint32_t tuner_lo;
-	uint32_t tuner_if;
+	int rc = 0;
+	uint32_t tuner_lo;					/* Actual tuner LO frequency. */
+	uint32_t tuner_if;					/* Desired tuner IF frequency. */
 	uint32_t actual_if = 0;
 	int inverted;
 
 	if ( tuner == NULL )
-		return -1;
+		return rc;
 
 	if ( direct_sampling )
 	{
@@ -660,6 +671,8 @@ int rtlsdr::rtlsdr_set_center_freq( uint32_t in_freq )
 		rtlsdr_set_i2c_repeater( 1 );
 		r = tuner->set_freq( in_freq - offs_freq, &tuner_lo );
 		rtlsdr_set_i2c_repeater( 0 );
+		if ( r < 0 )
+			return rc;
 	}
 
 	if ( tuner_lo > in_freq )
@@ -675,8 +688,14 @@ int rtlsdr::rtlsdr_set_center_freq( uint32_t in_freq )
 		inverted = 0;
 	}
 
-	r |= set_spectrum_inversion( inverted );
-	r |= rtl2832_set_if_freq( tuner_if, &actual_if );
+	r = set_spectrum_inversion( inverted );
+	if ( r < 0 )
+		rc = r;						/* We valiantly try to continue */
+
+	/*	Set 2832 chip IF frequency as best we can. */
+	r = rtlsdr_set_if_freq( tuner_if, &actual_if );
+	if ( r < 0 )
+		rc = r;						/* We valiantly try to continue */
 
 	freq = in_freq;
 
@@ -756,6 +775,112 @@ int	rtlsdr::rtlsdr_static_get_tuner_type( int index )
 	}
 	return RTLSDR_TUNER_UNKNOWN;
 }
+
+
+int rtlsdr::rtlsdr_get_tuner_bandwidths	( int *bandwidths )
+{
+	const uint32_t *ptr;
+	int len;
+
+	if ( tuner == NULL )
+		return -1;
+
+	if (( tuner_type == RTLSDR_TUNER_R820T )
+	||	( tuner_type == RTLSDR_TUNER_R828D ))
+	{
+		tuner->get_tuner_bandwidths( &ptr, &len );
+		if ( bandwidths )
+		{
+			/* buffer provided, copy data */
+			memcpy( bandwidths, ptr, len * sizeof( int ));
+		}
+		return len;
+	}
+	else
+	{
+		if ( bandwidths )
+			*bandwidths = 0;
+		return 1;
+	}
+}
+
+
+int rtlsdr::rtlsdr_get_tuner_bandwidths_safe( int *bandwidths
+											, int in_len
+											)
+{
+	const uint32_t *ptr;
+	int len;
+
+	if ( tuner == NULL )
+		return -1;
+
+	if (( tuner_type == RTLSDR_TUNER_R820T )
+	||	( tuner_type == RTLSDR_TUNER_R828D ))
+	{
+		tuner->get_tuner_bandwidths( &ptr, &len );
+		if ( bandwidths && ( in_len >= len ))
+		{
+			/* buffer provided, copy data */
+			memcpy( bandwidths, ptr, len );
+		}
+		return len / sizeof( int );
+	}
+	else
+	{
+		if ( bandwidths && ( in_len >= sizeof( int )))
+		{
+			/* buffer provided, set data to 0 */
+			*bandwidths = 0;
+		}
+		return 1;
+	}
+}
+
+
+int rtlsdr::rtlsdr_get_bandwidth_set_name( int nSet
+										 , char* pString
+										 )
+{
+	if (( pString == NULL )
+	||  ( tuner == NULL ))
+		return -1;
+
+	return tuner->get_bandwidth_set_name( nSet, pString );
+}
+
+
+int rtlsdr::rtlsdr_set_bandwidth_set( int nSet )
+{
+	if ( tuner == NULL )
+		return -1;
+
+	return tuner->set_bandwidth_set( nSet );
+}
+
+
+int rtlsdr::rtlsdr_set_tuner_bandwidth( int bandwidth )
+{
+	int r = 0;
+
+	if ( tuner == NULL )
+		return -1;
+
+	if (( tuner_type == RTLSDR_TUNER_R820T )
+	||	( tuner_type == RTLSDR_TUNER_R828D ))
+	{
+		rtlsdr_set_i2c_repeater(  1 );
+		r = tuner->set_bw( bandwidth );
+		rtlsdr_set_i2c_repeater( 0 );
+		if ( r >= 0 )
+		{
+			/* This also sets required IF */
+			rtlsdr_set_center_freq( freq );
+		}
+	}
+	return r;
+}
+
 
 int rtlsdr::rtlsdr_get_tuner_gains( int *gains )
 {
@@ -898,6 +1023,7 @@ int rtlsdr::rtlsdr_set_tuner_gain_mode( int mode )
 	return r;
 }
 
+
 int rtlsdr::rtlsdr_set_sample_rate( uint32_t samp_rate )
 {
 	int r = 0;
@@ -935,9 +1061,19 @@ int rtlsdr::rtlsdr_set_sample_rate( uint32_t samp_rate )
 	}
 
 	rtlsdr_set_i2c_repeater( 1 );
-	tuner->set_bw((int) real_rate );
+	r = tuner->set_bw((int) real_rate );
 	rtlsdr_set_i2c_repeater( 0 );
-
+	if (( r >= 0 )
+	&&	(( tuner_type == RTLSDR_TUNER_R820T )
+	||	 ( tuner_type == RTLSDR_TUNER_R828D )))
+	{
+		nominal_if_freq = r;
+		if ( freq > 0 )
+			rtlsdr_set_center_freq( freq );	// rtlsdr_set_if_freq
+		else
+			rtlsdr_set_center_freq( 500000000 );	// rtlsdr_set_if_freq
+		r = 0;
+	}
 	rate = (uint32_t) real_rate;
 
 	tmp = ( rsamp_ratio >> 16 ) ;
@@ -1067,8 +1203,8 @@ int rtlsdr::rtlsdr_set_direct_sampling( int on )
 	/* retune now that we have changed the config */
 	//	But note that the center frequency may not
 	//	have been set yet.
-	if ( freq != 0 )
-		r |= rtlsdr_set_center_freq( freq );
+	if ( freq > offs_freq )
+		r = rtlsdr_set_center_freq( freq );
 
 	return r;
 }
@@ -1097,19 +1233,20 @@ int rtlsdr::rtlsdr_set_offset_tuning( int on )
 	/* based on keenerds 1/f noise measurements */
 	offs_freq = on ? (( rate / 2 ) * 170 / 100 ) : 0;
 
-	if ( tuner!= NULL )
+	if ( tuner !=  NULL )
 	{
 		rtlsdr_set_i2c_repeater( 1 );
-		r |= tuner->set_bw( on ? ( 2 * offs_freq ) : rate );
+		r = tuner->set_bw( on ? ( 2 * offs_freq ) : rate );
 		rtlsdr_set_i2c_repeater( 0 );
+		//	Of course no special R820x dongle stuff is needed.
 	}
 
 
 	/* retune now that we have changed the config */
 	//	But note that the center frequency may not
 	//	have been set yet.
-	if ( freq != 0 )
-		r |= rtlsdr_set_center_freq( freq );
+	if ( freq > offs_freq )
+		r = rtlsdr_set_center_freq( freq );
 
 	return r;
 }
@@ -1380,7 +1517,6 @@ int rtlsdr::claim_opened_device( void )
 	int r;
 	if ( libusb_kernel_driver_active( devh, 0 ) == 1 )
 	{
-		driver_active = true;
 
 #ifdef DETACH_KERNEL_DRIVER
 		if (!libusb_detach_kernel_driver( devh, 0 ))
@@ -1546,6 +1682,7 @@ found:
 	/* use the rtl clock value by default */
 	tun_xtal = rtl_xtal;
 	tuner = tunerset[ tuner_type ];
+	r = tuner->init( this );
 
 	switch ( tuner_type )
 	{
@@ -1558,6 +1695,13 @@ found:
 		/* only enable In-phase ADC input */
 		rtlsdr_demod_write_reg( 0, 0x08, 0x4d, 1 );
 
+		/* the R82XX use 3.57 MHz IF for the DVB-T 6 MHz mode, and
+		 * 4.57 MHz for the 8 MHz mode */
+		rtlsdr_set_if_freq( R82XX_DEFAULT_IF_FREQ, NULL );
+
+		/* enable spectrum inversion */
+		rtlsdr_demod_write_reg( 1, 0x15, 0x01, 1 );
+
 		break;
 	case RTLSDR_TUNER_UNKNOWN:
 		fprintf(stderr, "No supported tuner found\n");
@@ -1568,7 +1712,6 @@ found:
 		break;
 	}
 
-	r = tuner->init( this );
 	tuner_initialized = index;
 
 	//	Make sure this is initialized in the dongles. There is a
@@ -1618,14 +1761,6 @@ int rtlsdr::rtlsdr_close( void )
 
 			libusb_release_interface( devh, 0 );
 
-#ifdef DETACH_KERNEL_DRIVER
-			if (dev->driver_active) {
-				if (!libusb_attach_kernel_driver(dev->devh, 0))
-					fprintf(stderr, "Reattached kernel driver\n");
-				else
-					fprintf(stderr, "Reattaching kernel driver failed!\n");
-			}
-#endif
 			rtlsdr_deinit_baseband();
 		}
 
@@ -2252,11 +2387,7 @@ unsigned __int64 rtlsdr::srtlsdr_get_version_int64( void )
 			return 0;		//	We're confused.
 		}
 
-#if defined( UNICODE )
-		work = work.Left( loc ) + L"\\rtlsdru.dll";
-#else
-		work = work.Left( loc ) + "\\rtlsdr.dll";
-#endif
+		work = work.Left( loc ) + _T( "\\rtlsdr.dll" );
 
 
 		int size = ::GetFileVersionInfoSize( work, NULL );
@@ -2309,3 +2440,33 @@ extern "C"
 		delete (rtlsdr*) me;
 	}
 }
+
+
+
+#if defined SET_SPECIAL_FILTER_VALUES
+int rtlsdr::rtlsdr_set_if_values( rtlsdr_dev_t *dev
+								, BYTE			regA
+								, BYTE			regB
+								, DWORD			ifFreq
+								)
+{
+	int r = 0;
+
+	if ( tuner == NULL )
+		return -1;
+
+	if (( tuner_type == RTLSDR_TUNER_R820T )
+	||	( tuner_type == RTLSDR_TUNER_R828D ))
+	{
+		rtlsdr_set_i2c_repeater(  1 );
+		r = tuner->SetFilterValuesDirect( regA, regB, ifFreq );
+		rtlsdr_set_i2c_repeater( 0 );
+		if ( r >= 0 )
+		{
+			/* This also sets required IF */
+			rtlsdr_set_center_freq( freq );
+		}
+	}
+	return r;
+}
+#endif

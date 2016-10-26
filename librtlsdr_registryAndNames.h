@@ -6,47 +6,47 @@
 typedef uint8_t usbportnums[ MAX_USB_PATH ];
 
 protected:	//	Static functions		Dongle array handling
-	static void	FillDongleArraysAndComboBox
+	STATIC void	FillDongleArraysAndComboBox
 										( CDongleArray * da
 										, CComboBox * combo
 										, LPCTSTR selected
 										);
 
-	static bool	GetDongleIdString		( CString& string
+	STATIC bool	GetDongleIdString		( CString& string
 										, int devindex
 										);
-	static int	FindDongleByIdString	( LPCTSTR source );
+	STATIC int	FindDongleByIdString	( LPCTSTR source );
 
 protected:	//	Static functions		Registry handling
-	static void	WriteRegistry			( void );
-	static uint32_t WriteSingleRegistry	( int index );
-	static void WriteRegLastCatalogTime	( void );
-	static void	ReadRegistry			( void );
-	static void mergeToMaster			( Dongle& tempd );
-	static const rtlsdr_dongle_t *
+	STATIC void	WriteRegistry			( void );
+	STATIC uint32_t WriteSingleRegistry	( int index );
+	STATIC void WriteRegLastCatalogTime	( void );
+	STATIC void	ReadRegistry			( void );
+	STATIC void mergeToMaster			( Dongle& tempd );
+	STATIC const rtlsdr_dongle_t *
 				find_known_device		( uint16_t vid
 										, uint16_t pid
 										);
-	static const char*
+	STATIC const char*
 				find_requested_dongle_name
 										( libusb_context *ctx
 										, uint32_t index
 										);
-	static int	open_requested_device	( libusb_context *ctx
+	STATIC int	open_requested_device	( libusb_context *ctx
 										, uint32_t index
 										, libusb_device_handle **ldevh
 										, bool devindex
 										);
 
-	static int	GetDongleIndexFromNames	( const char * manufact
+	STATIC int	GetDongleIndexFromNames	( const char * manufact
 										, const char * product
 										, const char * serial
 										);
-	static int	GetDongleIndexFromNames	( const CString & manufact
+	STATIC int	GetDongleIndexFromNames	( const CString & manufact
 										, const CString & product
 										, const CString & serial
 										);
-	static int	GetDongleIndexFromDongle( const Dongle dongle );
+	STATIC int	GetDongleIndexFromDongle( const Dongle dongle );
 
 
 protected:	//	Class functions
@@ -65,10 +65,10 @@ protected:	//	Class functions
 										, Dongle& tdongle
 										);
 	int			SafeFindDongle			( const Dongle& tdongle );
-	static int	FindInMasterDB			( Dongle*	dng
+	STATIC int	FindInMasterDB			( Dongle*	dng
 										, bool		exact
 										);
-	static int	FindGuessInMasterDB		( Dongle* dng );
+	STATIC int	FindGuessInMasterDB		( Dongle* dng );
 
 
 private:

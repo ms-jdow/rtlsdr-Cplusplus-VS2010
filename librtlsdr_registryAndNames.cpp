@@ -1,4 +1,5 @@
 #include "StdAfx.h"
+#define LIBSDRNAMES
 #include "librtlsdr.h"
 
 //	This file coordinates the dongle database and its Windows Registry
@@ -20,7 +21,8 @@ void rtlsdr::FillDongleArraysAndComboBox( CDongleArray * da
 										, LPCTSTR selected
 										)
 {
-	rtlsdr::GetCatalog();
+//	rtlsdr::
+		GetCatalog();
 	if ( goodCatalog )
 	{
 		if ( combo )
@@ -68,7 +70,8 @@ bool rtlsdr::GetDongleIdString( CString& string, int devindex )
 	string.Empty();
 	if ((DWORD) devindex >= RtlSdrArea->activeEntries )
 		return false;
-	rtlsdr::GetCatalog();
+//	rtlsdr::
+		GetCatalog();
 	if ( goodCatalog )
 	{
 		Dongle* dongle = NULL;

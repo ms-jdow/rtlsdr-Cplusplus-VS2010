@@ -29,9 +29,9 @@ extern "C" {
 
 typedef struct rtlsdr_dev rtlsdr_dev_t;
 
-RTLSDR_API uint32_t rtlsdr_get_device_count(void);
+RTLSDR_API uint32_t rtlsdr_get_device_count( void );
 
-RTLSDR_API const char* rtlsdr_get_device_name(uint32_t index);
+RTLSDR_API const char* rtlsdr_get_device_name( uint32_t index );
 
 /*!
  * Get USB device strings.
@@ -161,6 +161,13 @@ RTLSDR_API int rtlsdr_write_eeprom(rtlsdr_dev_t *dev, uint8_t *data,
 RTLSDR_API int rtlsdr_read_eeprom(rtlsdr_dev_t *dev, uint8_t *data,
 				  uint8_t offset, uint16_t len);
 
+/*!
+ * Set actual frequency the device is tuned to.
+ *
+ * \param dev the device handle given by rtlsdr_open()
+ * \param freq frequency in Hz
+ * \return <0 on error
+ */
 RTLSDR_API int rtlsdr_set_center_freq(rtlsdr_dev_t *dev, uint32_t freq);
 
 /*!
@@ -321,6 +328,57 @@ enum rtl_sdr_gain_mode {
 RTLSDR_API int rtlsdr_set_tuner_gain_mode(rtlsdr_dev_t *dev, int manual);
 
 /*!
+ * Get a list of bandwidths supported by the tuner.
+ *
+ * NOTE: The bandwidths argument must be preallocated by the caller. If NULL is
+ * being given instead, the number of available bandwidth values will be returned.
+ *
+ * \param dev the device handle given by rtlsdr_open()
+ * \param bandwidths array of bandwidth values in Hz.
+ * \return <= 0 on error, number of available (returned) gain values otherwise
+ */
+RTLSDR_API int rtlsdr_get_tuner_bandwidths(rtlsdr_dev_t *dev, int *bandwidths);
+
+/*!
+ * Set the bandwidth for the device.
+ *
+ * Valid bandwidth values may be queried with \ref rtlsdr_get_tuner_bandwidths function.
+ *
+ * \param dev the device handle given by rtlsdr_open()
+ * \param bandwidth in Hz.
+ * \return 0 on success
+ */
+RTLSDR_API int rtlsdr_set_tuner_bandwidth(rtlsdr_dev_t *dev, int bandwidth);
+
+/*!
+ *	Get the name for a set of IF filter bandwidths
+ *	
+ *	Query for bandwidth set N's name. Repeat for all values until the return
+ *	value is -1.
+ *		
+ *	\param dev the device handle given by rtlsdr_open()
+ *	\param nSet the index for the set to be recovered.
+ *	\param pString pointer to 80 BYTEs of storage to hold the bandwidth name.
+ *	\return 0 on success else -1.
+ */
+RTLSDR_API int rtlsdr_get_bandwidth_set_name( rtlsdr_dev_t *dev
+											, int nSet
+											, char* pString
+											);
+
+/*!
+ *	Select the IF bandwdith set desired.
+ *
+ *	Set a new current value for the bandwidth set in use. Follow with a query
+ *	for bandwidths in the set using rtlsdr_get_tuner_bandwidths().
+ *
+ * \param dev the device handle given by rtlsdr_open()
+ * \param nSet Bandwidth set number
+ * \return 0 on success -1 on error.
+ */
+RTLSDR_API int rtlsdr_set_bandwidth_set( rtlsdr_dev_t *dev, int nSet ); 
+
+/*!
  * Set the sample rate for the device, also selects the baseband filters
  * according to the requested sample rate for tuners where this is possible.
  *
@@ -331,6 +389,7 @@ RTLSDR_API int rtlsdr_set_tuner_gain_mode(rtlsdr_dev_t *dev, int manual);
  * 		    sample loss is to be expected for rates > 2400000
  * \return 0 on success, -EINVAL on invalid rate
  */
+
 RTLSDR_API int rtlsdr_set_sample_rate(rtlsdr_dev_t *dev, uint32_t rate);
 
 /*!
@@ -467,7 +526,6 @@ RTLSDR_API int rtlsdr_read_async(rtlsdr_dev_t *dev,
  */
 RTLSDR_API int rtlsdr_cancel_async(rtlsdr_dev_t *dev);
 
-#if 1	//  ADDED_VERSION_STRING_QUERY
 /*!
  * Return a version string
  *
@@ -476,7 +534,15 @@ RTLSDR_API int rtlsdr_cancel_async(rtlsdr_dev_t *dev);
 RTLSDR_API const char* rtlsdr_get_version( void );
 
 RTLSDR_API unsigned __int64 rtlsdr_get_version_int64( void );
-#endif //  ADDED_VERSION_STRING_QUERY
+
+#if defined( SET_SPECIAL_FILTER_VALUES )	// For testing
+RTLSDR_API int rtlsdr_set_if_values		( rtlsdr_dev_t *dev
+										, BYTE			regA
+										, BYTE			regB
+										, DWORD			ifFreq
+										);
+
+#endif
 
 #ifdef __cplusplus
 }

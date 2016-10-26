@@ -117,7 +117,7 @@ protected:	//	Read and write bulk transfers
 
 protected:	// Support functions
 	bool		dummy_write				( void );
-	static bool	CompareSparseRegAndData	( Dongle*		dng
+	STATIC bool	CompareSparseRegAndData	( Dongle*		dng
 										, eepromdata&	data
 										);
 

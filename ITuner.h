@@ -30,6 +30,13 @@ public:
 										, int gain
 										) PURE;
 	virtual int set_gain_mode			( int manual ) PURE;
+	virtual int get_tuner_bandwidths	( const uint32_t **bandwidths
+										, int *len
+										) PURE;
+	virtual int get_bandwidth_set_name	( int nSet
+										, char* pString
+										) PURE;
+	virtual int set_bandwidth_set		( int nSet ) PURE;
 	virtual int set_dither				( int dither ) PURE;
 
 	virtual int	get_xtal_frequency		( uint32_t& xtalfreq ) PURE;
@@ -38,4 +45,11 @@ public:
 	virtual int	get_tuner_gains			( const int **ptr
 										, int *len
 										) PURE;
+
+#if defined SET_SPECIAL_FILTER_VALUES
+	virtual int SetFilterValuesDirect	( BYTE regA
+										, BYTE regB
+										, DWORD ifFreq
+										) PURE;
+#endif
 };

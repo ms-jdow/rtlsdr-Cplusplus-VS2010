@@ -683,6 +683,14 @@ int rtlsdr::rtlsdr_read_async( rtlsdr_read_async_cb_t in_cb
 
 	for( i = 0; i < xfer_buf_num; ++i )
 	{
+		/* Sleep a little here. 
+		   Will avoid crash in case there are many small buffers. */
+		// jd = I don't believe it but this costs little.
+#ifdef _WIN32
+		Sleep(1);
+#else
+		usleep(1000);
+#endif
 		libusb_fill_bulk_transfer( xfer[ i ]
 								 , devh
 								 , 0x81
@@ -710,7 +718,7 @@ int rtlsdr::rtlsdr_read_async( rtlsdr_read_async_cb_t in_cb
 		{
 			/*fprintf(stderr, "handle_events returned: %d\n", r);*/
 			/*TRACE( "handle_events returned: %d\n", r);*/
-			if ( r == LIBUSB_ERROR_INTERRUPTED ) /* stray signal */
+			if (( r == LIBUSB_ERROR_INTERRUPTED ) || ( r == -1 )) /* stray signal */
 				continue;
 			break;
 		}

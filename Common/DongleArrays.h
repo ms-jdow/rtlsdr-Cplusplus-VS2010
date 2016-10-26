@@ -138,7 +138,7 @@ public:
 	bool	busy;						//	Device is busy if true.
 	BYTE	tunerType;					//	Type of tuner per enum rtlsdr_tuner
 	char	found;						//	RTLSDR index for merging data
-	bool	duplicated;					//	Is this entry a near duplicate?
+	bool	duplicated;					//	Is this entry a name duplicate?
 };
 
 __inline void Return::operator = ( const Dongle& d )

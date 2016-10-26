@@ -14,6 +14,7 @@
 #include "SharedMemoryFile.h"
 
 #define FIR_LEN 16
+#define STATIC
 
 class e4kTuner;
 class fc0012Tuner;
@@ -31,8 +32,8 @@ typedef BYTE usbpath_t[ MAX_USB_PATH ];
 class /*SDRDAPI */ rtlsdr : public IRtlSdr
 {
 public:
-	rtlsdr									();
-	~rtlsdr									();	// Unwind tuners.
+	rtlsdr									( void );
+	~rtlsdr									( void );	// Unwind tuners.
 
 protected:
 	friend e4kTuner;
@@ -47,7 +48,7 @@ protected:
 #include "librtlsdr_dongle_comms.h"
 
 protected:	// The real work.
-	static bool	test_busy					( uint32_t index );
+	STATIC bool	test_busy					( uint32_t index );
 	int			basic_open					( uint32_t index
 											, struct libusb_device_descriptor *out_dd
 											, bool devindex
@@ -56,7 +57,7 @@ protected:	// The real work.
 
 
 	int			rtlsdr_set_fir				( void );
-	int			rtl2832_set_if_freq			( uint32_t freq
+	int			rtlsdr_set_if_freq			( uint32_t freq
 											, uint32_t *freq_out
 											);
 	int			set_spectrum_inversion		( int inverted );
@@ -114,6 +115,18 @@ public:
 											);
 	int			rtlsdr_get_tuner_stage_gain	( uint8_t stage );
 	int			rtlsdr_set_tuner_gain_mode	( int mode );
+	int			rtlsdr_get_tuner_bandwidths	( int *bandwidths );
+	int			rtlsdr_set_tuner_bandwidth	( int bandwidth );
+	int			rtlsdr_get_tuner_bandwidths_safe
+											( int *bandwidths
+											, int in_len
+											);
+	int			rtlsdr_get_bandwidth_set_name
+											( int nSet
+											, char* pString
+											);
+	int			rtlsdr_set_bandwidth_set	( int nSet );
+
 	int			rtlsdr_set_sample_rate		( uint32_t samp_rate );
 	uint32_t	rtlsdr_get_sample_rate		( void );
 	uint32_t	rtlsdr_get_corr_sample_rate	( void );
@@ -154,41 +167,50 @@ public:
 	int			rtlsdr_get_index_by_serial	( const char *serial );
 
 	int			rtlsdr_get_tuner_type		( int index );
+#if defined SET_SPECIAL_FILTER_VALUES
+	int rtlsdr_set_if_values				( rtlsdr_dev_t *dev
+											, BYTE			regA
+											, BYTE			regB
+											, DWORD			ifFreq
+											);
+#endif
 
 public:
 	// Static functions
-	static uint32_t
+	STATIC uint32_t
 				srtlsdr_get_device_count	( void );
-	static const char *
+	STATIC const char *
 				srtlsdr_get_device_name		( uint32_t index );
-	static int	srtlsdr_get_device_usb_strings
+	STATIC int	srtlsdr_get_device_usb_strings
 											( uint32_t index
 											, char *manufact
 											, char *product
 											, char *serial
 											);
-	static int	srtlsdr_get_device_usb_strings
+	STATIC int	srtlsdr_get_device_usb_strings
 											( uint32_t index
 											, CString& manufact
 											, CString& product
 											, CString& serial
 											);
-	static int	srtlsdr_get_index_by_serial	( const char *serial );
-	static int	rtlsdr_static_get_tuner_type( int index );
-	static int	srtlsdr_eep_img_from_Dongle	( eepromdata&	dat
+	STATIC int	srtlsdr_get_index_by_serial	( const char *serial );
+	STATIC int	rtlsdr_static_get_tuner_type( int index );
+	STATIC int	srtlsdr_eep_img_from_Dongle	( eepromdata&	dat
 											, Dongle*		regentry
 											);
 
 protected:
-	static void	GetCatalog					( void );
-	static bool	reinitDongles				( void );
-	static bool TestMaster					( void );
+	STATIC void	GetCatalog					( void );
+	STATIC bool	reinitDongles				( void );
+	STATIC bool TestMaster					( void );
 
 private:
 	void		ClearVars					( void );
 
 private:
-//	static SharedMemoryFile					SharedDongleData;
+	STATIC SharedMemoryFile					SharedDongleData;
+	RtlSdrAreaDef*							RtlSdrArea;
+	Dongle*									Dongles;
 	/* rtl demod context */
 	uint32_t								rate; /* Hz */
 	uint32_t								rtl_xtal; /* Hz */
@@ -201,11 +223,11 @@ private:
 	uint32_t								freq; /* Hz */
 	uint32_t								offs_freq; /* Hz */
 	uint32_t								effective_freq; /* Hz */
+	uint32_t								nominal_if_freq; /* Hz */
 	int										corr; /* ppm */
 	int										gain; /* tenth dB */
 	int										gain_mode;
 	/* status */
-	bool									driver_active;	// Not used in Windows
 	ITuner*									tunerset[ RTLSDR_TUNER_R828D + 1 ];
 
 
@@ -221,11 +243,11 @@ private:
 
 public:
 	const char*	rtlsdr_get_version		( void );
-	static const char*
+	STATIC const char*
 				srtlsdr_get_version		( void );
 	unsigned __int64
 				rtlsdr_get_version_int64( void );
-	static unsigned __int64
+	STATIC unsigned __int64
 				srtlsdr_get_version_int64
 										( void );
 };

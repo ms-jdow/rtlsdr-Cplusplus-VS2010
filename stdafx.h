@@ -39,7 +39,7 @@
 #include <afxcmn.h>                     // MFC support for Windows Common Controls
 #endif // _AFX_NO_AFXCMN_SUPPORT
 
-#include "afxmt.h"			// needed for MFC support for mutex.
+#include <afxmt.h>			// needed for MFC support for mutex.
 
 #ifndef MODE_STATIC
 #define MODE_STATIC		1
@@ -95,3 +95,6 @@ typedef unsigned __int32  uint32_t;
 	extern void AfxMsgDbgOut( LPCTSTR lpszFormat, ...);
 	#define TRACE AfxMsgDbgOut 
 #endif
+
+#define SET_SPECIAL_FILTER_VALUES TRUE
+

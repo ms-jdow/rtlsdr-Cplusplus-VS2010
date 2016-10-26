@@ -1,9 +1,11 @@
 #include "StdAfx.h"
+#define LIBSDRNAMES
 #include "RtlSdrList.h"
 #include "MyMutex.h"
 
-RtlSdrAreaDef*		RtlSdrList::RtlSdrArea = NULL;
-Dongle*				RtlSdrList::Dongles = NULL;
+SharedMemoryFile	SharedDongleData;
+RtlSdrAreaDef*		RtlSdrArea = NULL;
+Dongle*				Dongles = NULL;
 
 CMyMutex			RtlSdrList::registry_mutex( _T( "RtlSdr++ Mutex" ));
 

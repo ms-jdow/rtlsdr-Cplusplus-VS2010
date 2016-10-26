@@ -15,10 +15,12 @@ typedef struct rtlsdr_dongle
 	const char *prodname;
 } rtlsdr_dongle_t;
 
+extern const rtlsdr_dongle_t known_devices[];
+#if defined( LIBSDRNAMES )
 /*
  * Please add your device here and send a patch to osmocom-sdr@lists.osmocom.org
  */
-static const rtlsdr_dongle_t known_devices[] =
+const rtlsdr_dongle_t known_devices[] =
 {
 	{ 0x0bda, 0x2832, "* Generic RTL2832U"
 					, "Generic", "RTL2832U" },
@@ -105,3 +107,4 @@ static const rtlsdr_dongle_t known_devices[] =
 	{ 0x1f4d, 0xd803, "* PROlectrix DV107669"
 					, "PROlectrix", "DV107669" },
 };
+#endif

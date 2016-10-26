@@ -32,7 +32,7 @@
 #define R82XX_CHECK_ADDR	0x00
 #define R82XX_CHECK_VAL		0x69
 
-#define R82XX_DEFAULT_IF_FREQ   6000000
+#define R82XX_DEFAULT_IF_FREQ   3570000		// was 6000000 jd: Leif
 #define R82XX_DEFAULT_IF_BW     2000000
 
 #define REG_SHADOW_START	5
@@ -52,14 +52,6 @@ enum r82xx_chip
 	CHIP_R820C,
 };
 
-typedef enum _r82xx_tuner_type
-{
-	TUNER_UNKNOWN = -1,
-	TUNER_RADIO = 1,
-	TUNER_ANALOG_TV,
-	TUNER_DIGITAL_TV
-} r82xx_tuner_type;
-
 typedef enum r82xx_xtal_cap_value
 {
 	XTAL_LOW_CAP_30P = 0,
@@ -69,12 +61,19 @@ typedef enum r82xx_xtal_cap_value
 	XTAL_HIGH_CAP_0P
 } r82xx_xtal_cap_val;
 
+typedef struct
+{
+    DWORD   Bandwidth;
+    DWORD   IfFreq;
+    BYTE    Reg0A;
+    BYTE    Reg0B;
+} tFilterInfo;
 
 class r82xxTuner : public ITuner
 {
 public:
 	r82xxTuner( rtlsdr* base, enum rtlsdr_tuner rafaelTunerType );
-	~r82xxTuner() {}
+	~r82xxTuner();
 
 	//	ITuner interface
 	virtual int init					( rtlsdr* base );
@@ -98,6 +97,13 @@ public:
 										, int32_t gain
 										);
 	virtual int set_gain_mode			( int manual );
+	virtual int get_tuner_bandwidths	( const uint32_t **bandwidths
+										, int *len
+										);
+	virtual int get_bandwidth_set_name	( int nSet
+										, char* pString
+										);
+	virtual int set_bandwidth_set		( int nSet );
 	virtual int set_dither				( int dither );
 
 	virtual int	get_xtal_frequency		( uint32_t& xtalfreq );
@@ -105,6 +111,13 @@ public:
 	virtual int	get_tuner_gains			( const int **ptr
 										, int *len
 										);
+
+#if defined SET_SPECIAL_FILTER_VALUES
+	virtual int SetFilterValuesDirect	( BYTE  regA
+										, BYTE  regB
+										, DWORD ifFreq
+										);
+#endif
 
 protected:
 	void		ClearVars				( void );
@@ -135,25 +148,29 @@ protected:
 	int			r82xx_set_pll			( uint32_t freq
 										, uint32_t *freq_out
 										);
-	int			r82xx_sysfreq_sel		( uint32_t in_freq
-										, r82xx_tuner_type in_type
-										, uint32_t in_delsys
-										);
-	int			r82xx_init_tv_standard	( unsigned in_bw
-										, r82xx_tuner_type in_type
-										, uint32_t in_delsys
-										);
-	int			update_if_filter		( void );
+	int			r82xx_sysfreq_sel		( void );
+	int			r82xx_init_tv_standard	( void );
+	int			update_if_filter		( uint32_t bw );
 	int			r82xx_set_bw			( uint32_t bw );
 	int			r82xx_read_gain			( void );
 	int			r82xx_set_gain			( int gain );
 	int			r82xx_set_freq			( uint32_t freq
 										, uint32_t *lo_freq_out
 										);
-	int			r82xx_xtal_check		( void );
+//	int			r82xx_xtal_check		( void );	// Done in r82xx_set_mux
 	int			r82xx_standby			( void );
 	int			r82xx_init				( void );
-	int			r82xx_set_nomod			( void );
+//	int			r82xx_set_nomod			( void );	//	Not used.
+	int			r82xx_get_tuner_bandwidths
+										( const uint32_t **bandwidths
+										, int *len
+										);
+	int			r82xx_get_bandwidth_set_name
+										( int nSet
+										, LPSTR pString
+										);
+	int			r82xx_set_bandwidth_set	( int nSet );
+
 	int			r82xx_set_dither		( int dither );
 
 	int			r82xx_enable_manual_gain( uint8_t manual);
@@ -174,21 +191,24 @@ protected:
 	int			r82xx_set_mixer_gain	( int32_t gain );
 	int			r82xx_set_VGA_gain		( int32_t gain );
 
-	int			r820t_calibrate			(  int calibration_lo  );	//  Calibrate tuner/TV standard
+	int			r82xx_calibrate			( int calibration_lo
+										, uint8_t hp_cor
+										);	//  Calibrate tuner/TV standard
+	void		r82xx_SetBWValues		( int nSet );
 
 protected:	//	config variables
 	uint8_t				m_i2c_addr;
 	uint32_t			m_xtal;
 	enum r82xx_chip		m_rafael_chip;
 	unsigned int		m_max_i2c_msg_len;
-	int					m_use_predetect;
 
 protected:	//	private variables
 	uint8_t				m_regs[ NUM_REGS ];
 	uint8_t				m_buf[ NUM_REGS + 1 ];
 	r82xx_xtal_cap_val	m_xtal_cap_sel;
 	uint16_t			m_pll;	/* kHz */
-	uint32_t			m_int_freq;
+	uint32_t			m_nominal_int_freq;
+	uint32_t			m_asked_for_freq;
 	uint8_t				m_fil_cal_code;
 	uint8_t				m_input;
 	int					m_init_done;
@@ -200,7 +220,6 @@ protected:	//	private variables
 
 	/* Store current mode */
 	uint32_t			m_delsys;
-	r82xx_tuner_type	m_type;
 
 	uint32_t			m_bw;	/* in MHz */
 	uint32_t			m_if_filter_freq;	/* in Hz */
@@ -216,4 +235,23 @@ protected:	//	private variables
 	int					stagegains[ 3 ];
 
 	rtlsdr*				rtldev;
+
+	//	Bandwidths reporting
+	uint32_t*			m_bandwidths;
+	int					m_CurBWSet;
+
+	const tFilterInfo*	m_FilterInfo;
+	int					m_FilterSetCount;
+
+protected:
+	//	Static data
+	//	One per set
+	static const tFilterInfo
+						m_FilterInfo0[];	//	Centered
+	static const tFilterInfo
+						m_FilterInfo1[];	//	High Side.
+
+	static const CString
+						BandwidthSetNames[];
+	static const DWORD	BWSNcount;
 };

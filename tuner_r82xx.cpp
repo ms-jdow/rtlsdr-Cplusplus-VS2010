@@ -70,14 +70,6 @@ struct r82xx_freq_range
 	uint8_t		xtal_cap0p;
 };
 
-enum r82xx_delivery_system
-{
-	SYS_UNDEFINED,
-	SYS_DVBT,
-	SYS_DVBT2,
-	SYS_ISDBT,
-};
-
 /* Those initial values start from REG_SHADOW_START */
 static const uint8_t r82xx_init_array[ NUM_REGS ] =
 {
@@ -379,10 +371,54 @@ static int32_t Mixer_stage[ ARRAY_SIZE( r82xx_mixer_gain_steps )];
 //  +300        +337        +372        +408
 static int32_t IF_stage[ ARRAY_SIZE( r82xx_vga_gain_steps )];
 
-#define MAX_GAIN_TABLE_SIZE (sizeof(r82xx_lna_gain_steps)/sizeof(r82xx_lna_gain_steps[0]) +\
-	sizeof(r82xx_mixer_gain_steps)/sizeof(r82xx_mixer_gain_steps[0]))
+#define MAX_GAIN_TABLE_SIZE \
+	( sizeof( r82xx_lna_gain_steps ) / sizeof( r82xx_lna_gain_steps[ 0 ] ) +\
+	  sizeof( r82xx_mixer_gain_steps ) / sizeof( r82xx_mixer_gain_steps[ 0 ] )\
+	)
 static int r82xx_gain_table_len;
 static int r82xx_gain_table[ MAX_GAIN_TABLE_SIZE ];
+
+const CString r82xxTuner::BandwidthSetNames[] =
+{
+	"Centered",
+	"Leif High side"
+};
+
+const DWORD r82xxTuner::BWSNcount = 2;
+
+#define BWSNdefault		0
+
+const tFilterInfo	r82xxTuner::m_FilterInfo0[] =
+{
+//      BW          IF          0x0a    0x0b
+    {	2100000,    1800000,    0xff,   0x0e, },
+//  {	2000000,    1700000,    0xff,   0x8e, },
+//  {	1850000,    1700000,    0xff,   0x8d, },
+//  {	1750000,    1825000,    0xff,   0x8c, },
+//  {	1600000,    1950000,    0xff,   0x8b, },
+    {	1300000,    1675000,    0xef,   0xab, },
+//  {	1300000,    2100000,    0xef,   0x8a, },
+    {	1100000,    2050000,    0xef,   0x89, },
+    {	 950000,    2150000,    0xef,   0x88, },
+    {	 700000,    2250000,    0xef,   0x87, },
+//  {	 650000,    1950000,    0xef,   0xA9, },
+    {	 550000,    1700000,    0xef,   0xea, },
+    {	 450000,    1750000,    0xef,   0xe9, },
+    {	 250000,    1825000,    0xef,   0xe8, }
+};
+const tFilterInfo	r82xxTuner::m_FilterInfo1[] =
+{
+//      BW          IF          0x0a    0x0b
+    {	2200000,    4700000,    0xef,   0x51, },
+    {	1600000,    1200000,    0xef,   0xef, },
+    {	1300000,    1300000,    0xef,   0xed, },
+    {	1200000,    1350000,    0xef,   0xec, },
+    {	1000000,    1550000,    0xef,   0xeb, },
+    {	 700000,    1700000,    0xef,   0xea, },
+    {	 550000,    2050000,    0xef,   0xe9, },
+    {	 400000,    2100000,    0xef,   0xe8, },
+    {	 300000,    2150000,    0xef,   0xe7, }
+};
 
 
 r82xxTuner::r82xxTuner( rtlsdr* base, enum rtlsdr_tuner type )
@@ -390,10 +426,20 @@ r82xxTuner::r82xxTuner( rtlsdr* base, enum rtlsdr_tuner type )
 	, m_rafael_chip( type == RTLSDR_TUNER_R828D ? CHIP_R828D : CHIP_R820T )
 	, m_i2c_addr( type == RTLSDR_TUNER_R828D ? R828D_I2C_ADDR : R820T_I2C_ADDR )
 	, gain_mode( 0 )
+	, m_CurBWSet( BWSNdefault )
+	, m_FilterInfo( NULL )
 {
 	memset( stagegains, 0, sizeof( stagegains ));
 	r82xx_calculate_stage_gains();
 	r82xx_compute_gain_table();
+
+	r82xx_SetBWValues( BWSNdefault );
+}
+
+
+r82xxTuner::~r82xxTuner( void )
+{
+	delete m_bandwidths;
 }
 
 
@@ -405,28 +451,29 @@ void r82xxTuner::ClearVars( void )
 	rtldev->rtlsdr_get_xtal_freq( NULL, &m_xtal );
 
 	m_max_i2c_msg_len = 8;
-	m_use_predetect   = false;
 
-	m_xtal_cap_sel    = XTAL_HIGH_CAP_0P;
-	m_pll             = 0;
-	m_int_freq        = 0;
-	m_fil_cal_code	  = 0;
-	m_input           = 0;
-	m_init_done       = false;
-	m_disable_dither  = false;
-	m_reg_cache		  = 0;
-	m_reg_batch       = 0;
-	m_reg_low         = 0;
-	m_reg_high        = 0;
+	m_xtal_cap_sel      = XTAL_HIGH_CAP_0P;
+	m_pll               = 0;
+	m_nominal_int_freq  = 0;
+	m_asked_for_freq    = 0;
+	m_fil_cal_code	    = 0;
+	m_input             = 0;
+	m_init_done         = false;
+	m_disable_dither    = false;
+	m_reg_cache		    = 0;
+	m_reg_batch         = 0;
+	m_reg_low           = 0;
+	m_reg_high          = 0;
 
 
-	m_delsys          = 0;
-	m_type			  = TUNER_RADIO;
-	m_bw              = 0;
-	m_if_filter_freq  = 0;
-	m_pll_off         = 0;
-	m_pll_low_limit   = 0;
-	m_pll_high_limit  = 0;
+	m_bw                = 0;
+	m_if_filter_freq    = 0;
+	m_pll_off           = 0;
+	m_pll_low_limit     = 0;
+	m_pll_high_limit    = 0;
+
+	m_CurBWSet			= BWSNdefault;
+	r82xx_SetBWValues( m_CurBWSet );
 }
 
 // ITuner interfaces
@@ -526,9 +573,24 @@ int r82xxTuner::set_gain_mode( int manual )
 	return r82xx_enable_manual_gain( manual );
 }
 
+int r82xxTuner::get_tuner_bandwidths( const uint32_t **bandwidths, int *len )
+{
+	return r82xx_get_tuner_bandwidths( bandwidths, len );
+}
+
+int r82xxTuner::get_bandwidth_set_name( int nSet, char* pString )
+{
+	return r82xx_get_bandwidth_set_name( nSet, pString );
+}
+
+int r82xxTuner::set_bandwidth_set( int nSet )
+{
+	return r82xx_set_bandwidth_set( nSet );
+}
+
 int r82xxTuner::set_dither( int dither )
 {
-	return -1;
+	return r82xx_set_dither( dither );
 }
 
 
@@ -844,8 +906,24 @@ int r82xxTuner::r82xx_set_pll( uint32_t freq, uint32_t *freq_out )
 	//	regardless of mix_div. Thus the tune frequencies can go as high as 1750 +
 	//	f_if or about 1756 with Oliver's code. The low end is about 21.3 Mhz
 
+#if 0 // documentation
+	/*	mutability////
+	rc = r82xx_read(priv, 0x00, data, sizeof(data));
+	if (rc < 0)
+		return rc;
+	vco_fine_tune = (data[4] & 0x30) >> 4;
+	*/
+	vco_fine_tune = 2;
+
+	if (vco_fine_tune > vco_power_ref)	// vco_power_ref = 1 or 2.
+		div_num = div_num - 1;
+	else if (vco_fine_tune < vco_power_ref)
+		div_num = div_num + 1;
+#endif
+
 	if ( m_rafael_chip == CHIP_R828D )
-		div_num = div_num - 1;				//  Only for r828d
+		div_num = div_num - 1;
+
 
 	rc = r82xx_write_reg_mask( 0x10, div_num << 5, 0xe0 );
 	if ( rc < 0 )
@@ -974,10 +1052,7 @@ int r82xxTuner::r82xx_set_pll( uint32_t freq, uint32_t *freq_out )
 	return rc;
 }
 
-int r82xxTuner::r82xx_sysfreq_sel( uint32_t in_freq
-								 , r82xx_tuner_type in_type
-								 , uint32_t in_delsys
-								 )
+int r82xxTuner::r82xx_sysfreq_sel( void )
 {
 	int rc;
 	uint8_t mixer_top;
@@ -992,80 +1067,17 @@ int r82xxTuner::r82xx_sysfreq_sel( uint32_t in_freq
 	uint8_t lna_discharge;
 	uint8_t filter_cur;
 
-	switch ( in_delsys )
-	{
-	case SYS_DVBT:
-		if (( in_freq == 506000000 )
-		||	( in_freq == 666000000 )
-		||	( in_freq == 818000000 ))
-		{
-			mixer_top   = 0x14;			/* mixer top:14 , top-1, low-discharge */
-			lna_top     = 0xe5;			/* detect bw 3, lna top:4, predet top:2 */
-			cp_cur      = 0x28;			/* 101, 0.2 */
-			div_buf_cur = 0x20;			/* 10, 200u */
-		}
-		else
-		{
-			mixer_top   = 0x24;			/* mixer top:13 , top-1, low-discharge */
-			lna_top     = 0xe5;			/* detect bw 3, lna top:4, predet top:2 */
-			cp_cur      = 0x38;			/* 111, auto */
-			div_buf_cur = 0x30;			/* 11, 150u */
-		}
-		lna_vth_l     = 0x53;			/* lna vth 0.84	,  vtl 0.64 */
-		mixer_vth_l   = 0x75;			/* mixer vth 1.04, vtl 0.84 */
-		air_cable1_in = 0x00;
-		cable2_in     = 0x00;
-		pre_dect      = 0x40;
-		lna_discharge = 14;
-		filter_cur    = 0x40;			/* 10, low */
-		break;
-	case SYS_DVBT2:
-		mixer_top     = 0x24;			/* mixer top:13 , top-1, low-discharge */
-		lna_top       = 0xe5;			/* detect bw 3, lna top:4, predet top:2 */
-		lna_vth_l     = 0x53;			/* lna vth 0.84	,  vtl 0.64 */
-		mixer_vth_l   = 0x75;			/* mixer vth 1.04, vtl 0.84 */
-		air_cable1_in = 0x00;
-		cable2_in     = 0x00;
-		pre_dect      = 0x40;
-		lna_discharge = 14;
-		cp_cur        = 0x38;			/* 111, auto */
-		div_buf_cur   = 0x30;			/* 11, 150u */
-		filter_cur    = 0x40;			/* 10, low */
-		break;
-	case SYS_ISDBT:
-		mixer_top     = 0x24;			/* mixer top:13 , top-1, low-discharge */
-		lna_top       = 0xe5;			/* detect bw 3, lna top:4, predet top:2 */
-		lna_vth_l     = 0x75;			/* lna vth 1.04	,  vtl 0.84 */
-		mixer_vth_l   = 0x75;			/* mixer vth 1.04, vtl 0.84 */
-		air_cable1_in = 0x00;
-		cable2_in     = 0x00;
-		pre_dect      = 0x40;
-		lna_discharge = 14;
-		cp_cur        = 0x38;			/* 111, auto */
-		div_buf_cur   = 0x30;			/* 11, 150u */
-		filter_cur    = 0x40;			/* 10, low */
-		break;
-	default: /* DVB-T 8M */
-		mixer_top     = 0x24;			/* mixer top:13 , top-1, low-discharge */
-		lna_top       = 0xe5;			/* detect bw 3, lna top:4, predet top:2 */
-		lna_vth_l     = 0x53;			/* lna vth 0.84	,  vtl 0.64 */
-		mixer_vth_l   = 0x75;			/* mixer vth 1.04, vtl 0.84 */
-		air_cable1_in = 0x00;
-		cable2_in     = 0x00;
-		pre_dect      = 0x40;
-		lna_discharge = 14;
-		cp_cur        = 0x38;			/* 111, auto */
-		div_buf_cur   = 0x30;			/* 11, 150u */
-		filter_cur    = 0x40;			/* 10, low */
-		break;
-	}
-
-	if ( m_use_predetect )
-	{
-		rc = r82xx_write_reg_mask( 0x06, pre_dect, 0x40 );
-		if ( rc < 0 )
-			return rc;
-	}
+	mixer_top     = 0x24;			/* mixer top:13 , top-1, low-discharge */
+	cp_cur        = 0x38;			/* 111, auto */
+	div_buf_cur   = 0x30;			/* 11, 150u */
+	lna_top       = 0xe5;			/* detect bw 3, lna top:4, predet top:2 */
+	lna_vth_l     = 0x53;			/* lna vth 0.84	,  vtl 0.64 */
+	mixer_vth_l   = 0x75;			/* mixer vth 1.04, vtl 0.84 */
+	air_cable1_in = 0x00;			/* freq > MHZ( 345 ) */
+	cable2_in     = 0x00;
+	pre_dect      = 0x40;
+	lna_discharge = 0x0e;
+	filter_cur    = 0x40;			/* 10, low */
 
 	rc = r82xx_write_reg_mask( 0x1d, lna_top, 0xc7 );
 	if ( rc < 0 )
@@ -1104,96 +1116,53 @@ int r82xxTuner::r82xx_sysfreq_sel( uint32_t in_freq
 	 * Set LNA
 	 */
 
-	if ( in_type != TUNER_ANALOG_TV )
-	{
-		/* LNA TOP: lowest */
-		rc = r82xx_write_reg_mask( 0x1d, 0, 0x38 );
-		if ( rc < 0 )
-			return rc;
+	/* LNA TOP: lowest */
+	rc = r82xx_write_reg_mask( 0x1d, 0, 0x38 );
+	if ( rc < 0 )
+		return rc;
 
-		/* 0: normal mode */
-		rc = r82xx_write_reg_mask( 0x1c, 0, 0x04);
-		if ( rc < 0 )
-			return rc;
+	/* 0: normal mode */
+	rc = r82xx_write_reg_mask( 0x1c, 0, 0x04);
+	if ( rc < 0 )
+		return rc;
 
-		/* 0: PRE_DECT off */
-		rc = r82xx_write_reg_mask( 0x06, 0, 0x40 );
-		if ( rc < 0 )
-			return rc;
+	/* 0: PRE_DECT off */
+	rc = r82xx_write_reg_mask( 0x06, 0, 0x40 );
+	if ( rc < 0 )
+		return rc;
 
-		/* agc clk 250hz */
-		rc = r82xx_write_reg_mask( 0x1a, 0x30, 0x30 );
-		if ( rc < 0 )
-			return rc;
+	/* agc clk 250hz */
+	rc = r82xx_write_reg_mask( 0x1a, 0x30, 0x30 );
+	if ( rc < 0 )
+		return rc;
 
-//		msleep(250);
+	/* write LNA TOP = 3 */
+	rc = r82xx_write_reg_mask( 0x1d, 0x18, 0x38);
+	if ( rc < 0 )
+		return rc;
 
-		/* write LNA TOP = 3 */
-		rc = r82xx_write_reg_mask( 0x1d, 0x18, 0x38);
-		if ( rc < 0 )
-			return rc;
+	/*
+		* write discharge mode
+		* FIXME: IMHO, the mask here is wrong, but it matches
+		* what's there at the original driver
+		*/
+	rc = r82xx_write_reg_mask( 0x1c, mixer_top, 0x04 );
+	if ( rc < 0 )
+		return rc;
 
-		/*
-		 * write discharge mode
-		 * FIXME: IMHO, the mask here is wrong, but it matches
-		 * what's there at the original driver
-		 */
-		rc = r82xx_write_reg_mask( 0x1c, mixer_top, 0x04 );
-		if ( rc < 0 )
-			return rc;
+	/* LNA discharge current */
+	rc = r82xx_write_reg_mask( 0x1e, lna_discharge, 0x1f );
+	if ( rc < 0 )
+		return rc;
 
-		/* LNA discharge current */
-		rc = r82xx_write_reg_mask( 0x1e, lna_discharge, 0x1f );
-		if ( rc < 0 )
-			return rc;
-
-		/* agc clk 60hz */
-		rc = r82xx_write_reg_mask( 0x1a, 0x20, 0x30 );
-		if ( rc < 0 )
-			return rc;
-	}
-	else
-	{
-		/* PRE_DECT off */
-		rc = r82xx_write_reg_mask( 0x06, 0, 0x40 );
-		if ( rc < 0 )
-			return rc;
-
-		/* write LNA TOP */
-		rc = r82xx_write_reg_mask( 0x1d, lna_top, 0x38 );
-		if ( rc < 0 )
-			return rc;
-
-		/*
-		 * write discharge mode
-		 * FIXME: IMHO, the mask here is wrong, but it matches
-		 * what's there at the original driver
-		 */
-		rc = r82xx_write_reg_mask( 0x1c, mixer_top, 0x04 );
-		if ( rc < 0 )
-			return rc;
-
-		/* LNA discharge current */
-		rc = r82xx_write_reg_mask( 0x1e, lna_discharge, 0x1f );
-		if ( rc < 0 )
-			return rc;
-
-		/* agc clk 1Khz, external det1 cap 1u */
-		rc = r82xx_write_reg_mask( 0x1a, 0x00, 0x30 );
-		if ( rc < 0 )
-			return rc;
-
-		rc = r82xx_write_reg_mask( 0x10, 0x00, 0x04 );
-		if ( rc < 0 )
-			return rc;
-	 }
+	/* agc clk 60hz */
+	rc = r82xx_write_reg_mask( 0x1a, 0x20, 0x30 );
+	if ( rc < 0 )
+		return rc;
 	 return 0;
 }
 
-int r82xxTuner::r82xx_init_tv_standard( unsigned in_bw
-									  , r82xx_tuner_type in_type
-									  , uint32_t in_delsys
-									  )
+int r82xxTuner::r82xx_init_tv_standard( void )
 {
 	/* everything that was previously done in r82xx_init_tv_standard
 	 * and doesn't need to be changed when filter settings change */
@@ -1202,6 +1171,8 @@ int r82xxTuner::r82xx_init_tv_standard( unsigned in_bw
 	uint32_t filt_cal_lo;
 	uint8_t filt_gain;
 	uint8_t img_r;
+	uint8_t filt_q;
+	uint8_t hp_cor;
 	uint8_t ext_enable;
 	uint8_t loop_through;
 	uint8_t lt_att;
@@ -1212,6 +1183,8 @@ int r82xxTuner::r82xx_init_tv_standard( unsigned in_bw
 	filt_cal_lo    = 56000;		/* 52000->56000 */
 	filt_gain      = 0x10;		/* +3db, 6mhz on */
 	img_r          = 0x00;		/* image negative */
+	filt_q         = 0x10;
+	hp_cor         = 0x6b;		/* high pass corner frequency */
 	ext_enable     = 0x60;		/* r30[6]=1 ext enable; r30[5]:1 ext at lna max-1 */
 	loop_through   = 0x00;		/* r5[7], lt on */
 	lt_att         = 0x00;		/* r31[7], lt att enable */
@@ -1231,18 +1204,18 @@ int r82xxTuner::r82xx_init_tv_standard( unsigned in_bw
 	if ( rc < 0 )
 		return rc;
 
-	/* for LT Gain test */
-	if ( in_type != TUNER_ANALOG_TV )
-	{
-		rc = r82xx_write_reg_mask( 0x1d, 0x00, 0x38 );
-		if ( rc < 0 )
-			return rc;
-//		usleep_range(1000, 2000);
-	}
-	m_int_freq = if_khz * 1000;
+	m_nominal_int_freq = if_khz * 1000;
 
-#define CALIBRATION_LO 88000	// Airspy frequency....
-	rc = r82xxTuner::r820t_calibrate( 88000 );//filt_cal_lo );	// Should this be 60000?
+	rc = r82xxTuner::r82xx_calibrate( filt_cal_lo, hp_cor );	// Should this be 60000?
+
+	rc = r82xx_write_reg_mask( 0x0a, filt_q | m_fil_cal_code, 0x1f);
+	if (rc < 0)
+		return rc;
+
+	/* Set BW, Filter_gain, & HP corner */
+	rc = r82xx_write_reg_mask( 0x0b, hp_cor, 0xef );
+	if (rc < 0)
+		return rc;
 
 	/* Set Img_R */
 	rc = r82xx_write_reg_mask( 0x07, img_r, 0x80 );
@@ -1279,119 +1252,57 @@ int r82xxTuner::r82xx_init_tv_standard( unsigned in_bw
 	if ( rc < 0 )
 		return rc;
 
-	/* Store current standard. If it changes, re-calibrate the tuner */
-	m_delsys = in_delsys;
-	m_type = in_type;
-
 	return 0;
 }
-
-int r82xxTuner::update_if_filter( void )
+int r82xxTuner::update_if_filter( uint32_t bw )
 {
-	int rc, hpf, lpf;
-	uint8_t filt_q;
-	uint8_t hp_cor;
-	int cal;
-
-	hpf = ((int) m_if_filter_freq - (int) m_bw / 2 ) / 1000;
-	lpf = ((int) m_if_filter_freq + (int) m_bw / 2 ) / 1000;
-
-	filt_q = 0x10;		/* r10[4]:low q(1'b1) */
-
-	if ( lpf <= 2500 )
+	uint8_t val;
+	int rc;
+	int i;
+	/* find a filter setting that is close to the required bandwidth */
+	if ( bw > 100 )
 	{
-		hp_cor = 0xE0; /* 1.7m enable,  +2cap */
-		cal = 16 * ( 2500 - lpf ) / ( 2500 - 2000 );
+		m_bw = bw;
+		TRACE( "Find closest bw to %d\n", m_bw );
+		int size = m_FilterSetCount;
+		for( i = 0; i < size - 2; i++ )
+		{
+			/* bandwidth is compared to median of the current and next available bandwidth in the table */
+			if ( bw > ( m_FilterInfo[ i ].Bandwidth
+					  + m_FilterInfo[ i + 1 ].Bandwidth
+					  ) / 2 )
+				break;
+		}
+		if ( i >= size )
+			i = size - 1;
 	}
 	else
-	if ( lpf <= 3100 )
-	{
-		hp_cor = 0xA0;	/* 1.7m enable,  +1cap */
-		cal = 16 * ( 3100 - lpf ) / ( 3100 - 2200 );
-	}
-	else
-	if ( lpf <= 3900 )
-	{
-		hp_cor = 0x80;	/* 1.7m enable,  +0cap */
-		cal = 16 * ( 3900 - lpf ) / ( 3900 - 2600 );
-	}
-	else
-	if ( lpf <= 7100 )
-	{
-				hp_cor = 0x60;	/* 1.7m disable, +2cap */
-				cal = 16 * ( 7100 - lpf ) / ( 7100 - 5300 );
-	}
-	else
-	if ( lpf <= 8700 )
-	{
-		hp_cor = 0x20;	/* 1.7m disable, +1cap */
-		cal = 16 * ( 8700 - lpf ) / ( 8700 - 6300 );
-	}
-	else
-	{
-		hp_cor = 0x00;	/* 1.7m disable, +0cap */
-		cal = 16 * ( 11000 - lpf ) / ( 11000 - 7500 );
-	}
+		i = bw;
 
-	if ( hpf >= 4700 )
-		hp_cor |= 0x00;	/*         5 MHz */
-	else
-	if ( hpf >= 3800 )
-		hp_cor |= 0x01;	/*         4 MHz */
-	else
-	if ( hpf >= 3000 )
-		hp_cor |= 0x02;	/* -12dB @ 2.25 MHz */
-	else
-	if ( hpf >= 2800 )
-		hp_cor |= 0x03;	/*  -8dB @ 2.25 MHz */
-	else
-	if ( hpf >= 2600 )
-		hp_cor |= 0x04;	/*  -4dB @ 2.25 MHz */
-	else
-	if ( hpf >= 2400 )
-		hp_cor |= 0x05;	/* -12dB @ 1.75 MHz */
-	else
-	if ( hpf >= 2200 )
-		hp_cor |= 0x06;	/*  -8dB @ 1.75 MHz */
-	else
-	if ( hpf >= 2000 )
-		hp_cor |= 0x07;	/*  -4dB @ 1.75 MHz */
-	else
-	if ( hpf >= 1800 )
-		hp_cor |= 0x08;	/* -12dB @ 1.25 MHz */
-	else
-	if ( hpf >= 1600 )
-		hp_cor |= 0x09;	/*  -8dB @ 1.25 MHz */
-	else
-	if ( hpf >= 1400 )
-		hp_cor |= 0x0A;	/*  -4dB @ 1.25 MHz */
-	else
-		hp_cor |= 0x0B;
+	m_bw = m_FilterInfo[ i ].Bandwidth;	/* Set the actual IF BW we get. */
+	TRACE( "Found bw = %d entry %d\n", m_bw, i );
 
-
-	if ( cal < 0 )
-		cal = 0;
-	else
-	if ( cal > 15 )
-		cal = 15;
-	m_fil_cal_code = cal;
-
-	rc = r82xx_write_reg_mask( 0x0a, filt_q | m_fil_cal_code, 0x1f );
+	val = m_FilterInfo[ i ].Reg0A;
+	rc = r82xx_write( 0x0a, &val, 1);
 	if ( rc < 0 )
 		return rc;
 
-	/* Set BW, Filter_gain, & HP corner */
-	rc = r82xx_write_reg_mask( 0x0b, hp_cor, 0xef );
+	val = m_FilterInfo[ i ].Reg0B;
+	rc = r82xx_write( 0x0b, &val, 1 );
 	if ( rc < 0 )
 		return rc;
 
-	return 0;
+	/* Save the nominal IF frequency that matches this bandwidth. */
+	m_nominal_int_freq = m_FilterInfo[ i ].IfFreq;
+
+	TRACE( "With an intermediate frequency of %d\n", m_nominal_int_freq );
+	return m_nominal_int_freq;
 }
+
 
 int r82xxTuner::r82xx_set_bw( uint32_t bw )
 {
-	m_bw = bw;
-	return update_if_filter();
+	return update_if_filter( bw );
 }
 
 int r82xxTuner::r82xx_read_gain( void )
@@ -1411,7 +1322,7 @@ int r82xxTuner::r82xx_set_gain( int gain )
 {
 	int rc;
 
-	if ( gain_mode )
+	if ( gain_mode )	/* Gain mode 0 == AGC. All others manual */
 	{
 		int i;
 		int total_gain = 0;
@@ -1505,7 +1416,7 @@ int r82xxTuner::r82xx_enable_manual_gain( uint8_t in_gain_mode )
 				return rc;
 
 			 /* Mixer auto off */
-			rc = r82xx_write_reg_mask( 0x07, 0, 0x10 );
+			rc = r82xx_write_reg_mask( 0x07, 0x00, 0x10 );
 			if ( rc < 0 )
 				return rc;
 
@@ -1535,7 +1446,9 @@ int r82xxTuner::r82xx_enable_manual_gain( uint8_t in_gain_mode )
 		r82xx_compute_gain_table();
 	}
 
-	return 0;
+	if ( gain_mode == GAIN_MODE_MANUAL )
+		return 0; /* compatibility to old mode API */
+	return gain_mode;
 }
 
 void r82xxTuner::r82xx_calculate_stage_gains(void)
@@ -1672,8 +1585,8 @@ int r82xxTuner::r82xx_set_VGA_gain( int32_t gain )
 int r82xxTuner::r82xx_set_freq( uint32_t freq, uint32_t *lo_freq_out )
 {
 	int rc = -1;
-	uint32_t lo_freq = freq + m_int_freq;
-	uint32_t margin = (uint32_t) ( 1e6 + m_bw / 2 );
+	uint32_t lo_freq = freq + m_nominal_int_freq;	//	Dongle Synthesizer Freq.
+	uint32_t margin = (uint32_t) ( 1e6 + m_bw / 2 );	//	TODOTODO: Possibly cause error!
 	uint8_t air_cable1_in;
 
 	int changed_pll_limits = 0;
@@ -1701,7 +1614,7 @@ int r82xxTuner::r82xx_set_freq( uint32_t freq, uint32_t *lo_freq_out )
 	/* IF generation settings */
 
  retune:
-	if (( freq < 14.4e6 ) && ( freq < ( m_pll_low_limit - 14.4e6 )))
+	if (( freq < 14400000 ) && ( freq < ( m_pll_low_limit - 14400000 )))
 	{
 		/* Previously "no-mod direct sampling" - confuse the VCO/PLL
 		 * sufficiently that we get the HF signal leaking through
@@ -1784,18 +1697,18 @@ int r82xxTuner::r82xx_set_freq( uint32_t freq, uint32_t *lo_freq_out )
 			/* Magic return value to say that the PLL didn't lock.
 			 * If we are close to the edge of the PLL range, shift the range and try again.
 			 */
-			if ( lo_freq < PLL_SAFE_LOW )
+			if ( *lo_freq_out < PLL_SAFE_LOW )
 			{
-				m_pll_low_limit = lo_freq + PLL_STEP_LOW;
+				m_pll_low_limit = *lo_freq_out + PLL_STEP_LOW;
 				if ( m_pll_low_limit > PLL_SAFE_LOW )
 					m_pll_low_limit = PLL_SAFE_LOW;
 				changed_pll_limits = 1;
 				goto retune;
 			}
 			else
-			if ( lo_freq > PLL_SAFE_HIGH )
+			if ( *lo_freq_out > PLL_SAFE_HIGH )
 			{
-				m_pll_high_limit = lo_freq - PLL_STEP_HIGH;
+				m_pll_high_limit = *lo_freq_out - PLL_STEP_HIGH;
 				if ( m_pll_high_limit < PLL_SAFE_HIGH )
 					m_pll_high_limit = PLL_SAFE_HIGH;
 				changed_pll_limits = 1;
@@ -1808,31 +1721,29 @@ int r82xxTuner::r82xx_set_freq( uint32_t freq, uint32_t *lo_freq_out )
 			}
 		}
 
-		rc |= pll_error;
+		rc = pll_error;
 	}
 
 	if ( changed_pll_limits )
 	{
-		fprintf(stderr, "[r82xx] Updated PLL limits to %u .. %u Hz\n", m_pll_low_limit, m_pll_high_limit);
+		fprintf( stderr, "[r82xx] Updated PLL limits to %u .. %u Hz\n", m_pll_low_limit, m_pll_high_limit);
 		TRACE( "[r82xx] Updated PLL limits to %u .. %u Hz\n", m_pll_low_limit, m_pll_high_limit);
 	}
 
 	/* IF filter / image rejection settings */
 
-	if ( lo_freq > freq )
+	if ( *lo_freq_out > freq )
 	{
 		/* high-side mixing, image negative */
 		rc |= r82xx_write_reg_mask(  0x07, 0x00, 0x80 );
-		m_if_filter_freq = lo_freq - freq;
+		m_if_filter_freq = *lo_freq_out - freq;
 	}
 	else
 	{
 		/* low-side mixing, image positive */
 		rc |= r82xx_write_reg_mask( 0x07, 0x80, 0x80 );
-		m_if_filter_freq = freq - lo_freq;
+		m_if_filter_freq = freq - *lo_freq_out;
 	}
-
-	update_if_filter();
 
 	if ( m_reg_batch )
 	{
@@ -1844,10 +1755,13 @@ int r82xxTuner::r82xx_set_freq( uint32_t freq, uint32_t *lo_freq_out )
 		fprintf(stderr, "%s: failed=%d\n", __FUNCTION__, rc);
 		TRACE( "%s: failed=%d\n", __FUNCTION__, rc);
 	}
+
+	m_asked_for_freq = freq;
+
 	return rc;
 }
 
-//	NOT USED
+#if 0	//	NOT USED
 int r82xxTuner::r82xx_set_nomod( void )
 {
 	int rc = -1;
@@ -1874,6 +1788,67 @@ err:
 	}
 	return rc;
 }
+#endif
+
+int r82xxTuner::r82xx_get_tuner_bandwidths( const uint32_t **bandwidths, int *len )
+{
+	if ( !len & !bandwidths )
+		return -1;
+
+#if defined( LEIF_TABLES )
+	*len = r82xx_bandwidth_table_len * sizeof( int );
+	if ( bandwidths != NULL )
+		*bandwidths = r82xx_bandwidth_table;
+	else
+		return *len;
+#else
+	*len = m_FilterSetCount;
+	if ( bandwidths != NULL )
+		*bandwidths = m_bandwidths;
+	else
+		return *len;
+#endif
+	return 0;
+}
+
+
+int r82xxTuner::r82xx_get_bandwidth_set_name
+										( int nSet
+										, LPSTR pString
+										)
+{
+	if ( pString == NULL )
+		return -1;
+	if ((DWORD) nSet >= (DWORD) BWSNcount )
+	{
+		pString[ 0 ] = 0;
+		return -1;
+	}
+	else
+	{
+		int size = BandwidthSetNames[ nSet ].GetLength();
+		memcpy( pString
+			  , (LPCSTR) BandwidthSetNames[ nSet ]
+			  , size
+			  );
+		pString[ size ] = 0;
+		return 0;
+	}
+}
+
+
+int r82xxTuner::r82xx_set_bandwidth_set( int nSet )
+{
+	if ((DWORD) nSet >= (DWORD) BWSNcount )
+		return -1;
+	else
+	{
+		//	Set it somehow.
+		r82xx_SetBWValues( nSet );
+		return 0;
+	}
+}
+
 
 int r82xxTuner::r82xx_set_dither( int dither )
 {
@@ -1927,7 +1902,6 @@ int r82xxTuner::r82xx_standby( void )
 	rc = r82xx_write_reg( 0x19, 0x0c );
 
 	/* Force initial calibration */
-	m_type = TUNER_UNKNOWN;
 	m_reg_cache = 1;
 	return rc;
 }
@@ -1936,6 +1910,8 @@ int r82xxTuner::r82xx_standby( void )
  * r82xx device init logic
  */
 
+/* Done in r82xx_set_mux these days. */
+#if 0
 int r82xxTuner::r82xx_xtal_check( void )
 {
 	int rc;
@@ -1978,10 +1954,10 @@ int r82xxTuner::r82xx_xtal_check( void )
 		rc = r82xx_read( 0x00, data, sizeof( data ));
 		if ( rc < 0 )
 			return rc;
-		if (!(data[2] & 0x40))
+		if (( data[ 2 ] & 0x40 ) != 0 )
 			continue;
 
-		val = data[2] & 0x3f;
+		val = data[ 2 ] & 0x3f;
 
 		if (( m_xtal == 16000000 ) && (( val > 29 ) || ( val < 23 )))
 			break;
@@ -1995,6 +1971,7 @@ int r82xxTuner::r82xx_xtal_check( void )
 
 	return r82xx_xtal_capacitor[ i ][ 1 ];
 }
+#endif
 
 int r82xxTuner::r82xx_init( void )
 {
@@ -2007,17 +1984,20 @@ int r82xxTuner::r82xx_init( void )
 	m_reg_cache = 0;
 	rc = r82xx_write( 0x05, r82xx_init_array, sizeof( r82xx_init_array ));
 
-	rc |= r82xx_init_tv_standard( 3, TUNER_DIGITAL_TV, 0 );
+	rc |= r82xx_init_tv_standard();
 
 	m_bw       = R82XX_DEFAULT_IF_BW;
-	m_int_freq = R82XX_DEFAULT_IF_FREQ;
+	m_nominal_int_freq = R82XX_DEFAULT_IF_FREQ;
 	/* r82xx_set_bw will always be called by rtlsdr_set_sample_rate,
 	   so there's no need to call r82xx_set_if_filter here */
 
-	rc |= r82xx_sysfreq_sel( 0, TUNER_DIGITAL_TV, SYS_DVBT );
+	rc |= r82xx_sysfreq_sel();
 
 	m_pll_low_limit = PLL_INITIAL_LOW;
 	m_pll_high_limit = PLL_INITIAL_HIGH;
+
+	r82xx_calculate_stage_gains();
+	r82xx_compute_gain_table();
 
 	m_init_done = 1;
 	m_reg_cache = 1;
@@ -2036,60 +2016,64 @@ https://stuff.mit.edu/afs/sipb/contrib/linux/drivers/media/tuners/r820t.c
 part of r820t_set_tv_standard()
 */
 #define CALIBRATION_LO 88000	// Airspy
-int r82xxTuner::r820t_calibrate( int calibration_lo )
+int r82xxTuner::r82xx_calibrate( int calibration_lo, uint8_t hp_cor )
 {
-  int i, rc, cal_code;
-  uint8_t data[ 5 ];
+	int i;
+	int rc;
+	uint8_t data[ 5 ];
 
-  for ( i = 0; i < 5; i++ )
-  {
-    /* Set filt_cap */
-    rc = r82xx_write_reg_mask( 0x0b, 0x08, 0x60 );
-    if (rc < 0)
-      return rc;
+	for ( i = 0; i < 5; i++ )
+	{
+		/* Set filt_cap */
+		rc = r82xx_write_reg_mask( 0x0b, hp_cor /*0x08*/, 0x60 );	//	jd: Leif
+		if ( rc < 0 )
+			return rc;
 
-    /* set cali clk =on */
-    rc = r82xx_write_reg_mask( 0x0f, 0x04, 0x04 );
-    if (rc < 0)
-      return rc;
+		/* set cali clk =on */
+		rc = r82xx_write_reg_mask( 0x0f, 0x04, 0x04 );
+		if ( rc < 0 )
+			return rc;
 
-    /* X'tal cap 0pF for PLL */
-    rc = r82xx_write_reg_mask( 0x10, 0x00, 0x03);
-    if (rc < 0)
-      return rc;
+		/* X'tal cap 0pF for PLL */
+		rc = r82xx_write_reg_mask( 0x10, 0x00, 0x03);
+		if ( rc < 0 )
+			return rc;
 
-    rc = r82xx_set_pll( calibration_lo * 1000, NULL );
-    if (rc < 0)
-      return rc;
+		rc = r82xx_set_pll( calibration_lo * 1000, NULL );
+		if ( rc < 0 )
+			return rc;
 
-    /* Start Trigger */
-    rc = r82xx_write_reg_mask( 0x0b, 0x10, 0x10);
-    if (rc < 0)
-      return rc;
+		/* Start Trigger */
+		rc = r82xx_write_reg_mask( 0x0b, 0x00, 0x10);
+		if ( rc < 0 )
+			return rc;
 
-    Sleep( 1 );
+		Sleep( 1 );
 
-    /* Stop Trigger */
-    rc = r82xx_write_reg_mask( 0x0b, 0x00, 0x10 );
-    if (rc < 0)
-      return rc;
+		/* Stop Trigger */
+		rc = r82xx_write_reg_mask( 0x0b, 0x00, 0x10 );
+		if ( rc < 0 )
+			return rc;
 
-    /* set cali clk =off */
-    rc = r82xx_write_reg_mask( 0x0f, 0x00, 0x04 );
-    if (rc < 0)
-      return rc;
+		/* set cali clk =off */
+		rc = r82xx_write_reg_mask( 0x0f, 0x00, 0x04 );
+		if ( rc < 0 )
+			return rc;
 
-    /* Check if calibration worked */
-    rc = r82xx_read( 0x00, data, sizeof( data ));
-    if (rc < 0)
-      return rc;
+		/* Check if calibration worked */
+		rc = r82xx_read( 0x00, data, sizeof( data ));
+		if ( rc < 0 )
+			return rc;
 
-    cal_code = data[4] & 0x0f;
-    if ( cal_code && cal_code != 0x0f )
-      return 0;
-  }
+		m_fil_cal_code = data[ 4 ] & 0x0f;
+		if ( m_fil_cal_code && ( m_fil_cal_code != 0x0f ))
+			break;
+	}
 
-  return -1;
+	if ( m_fil_cal_code == 0x0f )
+		m_fil_cal_code = 0;
+
+	return i >= 5 ? -1 : 0;
 }
 
 #if 0
@@ -2099,3 +2083,50 @@ static int r82xx_gpio( int enable)
 	return r82xx_write_reg_mask( 0x0f, enable ? 1 : 0, 0x01);
 }
 #endif
+
+#if defined SET_SPECIAL_FILTER_VALUES
+int r82xxTuner::SetFilterValuesDirect( BYTE regA
+									 , BYTE regB
+									 , DWORD ifFreq
+									 )
+{
+	int rc;
+	rc = r82xx_write_reg_mask( 0x0a, regA, 0xff );
+	if ( rc < 0 )
+		return rc;
+
+	rc = r82xx_write_reg_mask( 0x0b, regB, 0xff );
+	if ( rc < 0 )
+		return rc;
+
+	m_nominal_int_freq = ifFreq;
+	return rc;
+}
+#endif
+
+
+void r82xxTuner::r82xx_SetBWValues( int nSet )
+{
+	int size = 0;
+	m_FilterSetCount = 0;
+	switch( nSet )
+	{
+	case 0:
+		m_FilterInfo = m_FilterInfo0;
+		size = sizeof( m_FilterInfo0 ) / sizeof( tFilterInfo );
+		break;
+	case 1:
+		m_FilterInfo = m_FilterInfo1;
+		size = sizeof( m_FilterInfo1 ) / sizeof( tFilterInfo );
+	}
+	
+	m_bandwidths = new uint32_t[ size ];
+	if ( m_bandwidths )
+	{
+		for( int i = 0; i < size; i++ )
+		{
+			m_bandwidths[ i ] = m_FilterInfo[ i ].Bandwidth;
+		}
+		m_FilterSetCount = size;
+	}
+}

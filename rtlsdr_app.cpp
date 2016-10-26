@@ -186,14 +186,18 @@ static void CloseSdrDongle( rtlsdr* dongle )
 RTLSDR_API uint32_t rtlsdr_get_device_count( void )
 {
 	HERE();
-	return rtlsdr::srtlsdr_get_device_count();
+	rtlsdr rtl;
+	return rtl.srtlsdr_get_device_count();
 }
+
 
 RTLSDR_API const char* rtlsdr_get_device_name( uint32_t index )
 {
 	HERE();
-	return rtlsdr::srtlsdr_get_device_name( index );
+	rtlsdr rtl;
+	return rtl.srtlsdr_get_device_name( index );
 }
+
 
 RTLSDR_API int rtlsdr_get_device_usb_strings( uint32_t index
 											, char *manufact
@@ -202,12 +206,14 @@ RTLSDR_API int rtlsdr_get_device_usb_strings( uint32_t index
 											)
 {
 	HERE();
-	return rtlsdr::srtlsdr_get_device_usb_strings( index
-												 , manufact
-												 , product
-												 , serial
-												 );
+	rtlsdr rtl;
+	return rtl.srtlsdr_get_device_usb_strings( index
+											 , manufact
+											 , product
+											 , serial
+											 );
 }
+
 
 RTLSDR_API int rtlsdr_get_device_usb_cstrings( uint32_t index
 											 , CString& manufact
@@ -216,18 +222,22 @@ RTLSDR_API int rtlsdr_get_device_usb_cstrings( uint32_t index
 											 )
 {
 	HERE();
-	return rtlsdr::srtlsdr_get_device_usb_strings( index
-												 , manufact
-												 , product
-												 , serial
-												 );
+	rtlsdr rtl;
+	return rtl.srtlsdr_get_device_usb_strings( index
+											 , manufact
+											 , product
+											 , serial
+											 );
 }
 
-RTLSDR_API int rtlsdr_get_index_by_serial(const char *serial)
+
+RTLSDR_API int rtlsdr_get_index_by_serial( const char *serial )
 {
 	HERE();
-	return rtlsdr::srtlsdr_get_index_by_serial( serial );
+	rtlsdr rtl;
+	return rtl.srtlsdr_get_index_by_serial( serial );
 }
+
 
 RTLSDR_API int rtlsdr_open( rtlsdr_dev_t **dev, uint32_t index )
 {
@@ -252,6 +262,7 @@ RTLSDR_API int rtlsdr_open( rtlsdr_dev_t **dev, uint32_t index )
 	return ret;
 }
 
+
 RTLSDR_API int rtlsdr_close( rtlsdr_dev_t *dev )
 {
 	HERE();
@@ -266,6 +277,7 @@ RTLSDR_API int rtlsdr_close( rtlsdr_dev_t *dev )
 	return ret;
 }
 
+
 RTLSDR_API int rtlsdr_set_xtal_freq( rtlsdr_dev_t *dev
 								   , uint32_t rtl_freq
 								   , uint32_t tuner_freq
@@ -278,6 +290,7 @@ RTLSDR_API int rtlsdr_set_xtal_freq( rtlsdr_dev_t *dev
 	return -1;
 }
 
+
 RTLSDR_API int rtlsdr_get_xtal_freq( rtlsdr_dev_t *dev
 								   , uint32_t *rtl_freq
 								   , uint32_t *tuner_freq
@@ -289,6 +302,7 @@ RTLSDR_API int rtlsdr_get_xtal_freq( rtlsdr_dev_t *dev
 				->rtlsdr_get_xtal_freq( rtl_freq, tuner_freq );
 	return -1;
 }
+
 
 RTLSDR_API int rtlsdr_get_usb_strings( rtlsdr_dev_t *dev
 									 , char *manufact
@@ -304,6 +318,7 @@ RTLSDR_API int rtlsdr_get_usb_strings( rtlsdr_dev_t *dev
 													   );
 	return NULL;
 }
+
 
 RTLSDR_API int rtlsdr_write_eeprom( rtlsdr_dev_t *dev
 								  , uint8_t *data
@@ -330,6 +345,7 @@ RTLSDR_API int rtlsdr_read_eeprom( rtlsdr_dev_t *dev
 	return -1;
 }
 
+
 RTLSDR_API int rtlsdr_set_center_freq( rtlsdr_dev_t *dev, uint32_t freq )
 {
 	HERE();
@@ -338,13 +354,15 @@ RTLSDR_API int rtlsdr_set_center_freq( rtlsdr_dev_t *dev, uint32_t freq )
 	return -1;
 }
 
-RTLSDR_API uint32_t rtlsdr_get_center_freq(rtlsdr_dev_t *dev)
+
+RTLSDR_API uint32_t rtlsdr_get_center_freq( rtlsdr_dev_t *dev )
 {
 	HERE();
 	if ( dev != NULL )
 		return ((rtlsdr*) dev )->rtlsdr_get_center_freq();
 	return -1;
 }
+
 
 RTLSDR_API int rtlsdr_set_freq_correction( rtlsdr_dev_t *dev, int ppm )
 {
@@ -354,6 +372,7 @@ RTLSDR_API int rtlsdr_set_freq_correction( rtlsdr_dev_t *dev, int ppm )
 	return -1;
 }
 
+
 RTLSDR_API int rtlsdr_get_freq_correction( rtlsdr_dev_t *dev )
 {
 	HERE();
@@ -361,6 +380,7 @@ RTLSDR_API int rtlsdr_get_freq_correction( rtlsdr_dev_t *dev )
 		return ((rtlsdr*) dev )->rtlsdr_get_freq_correction();
 	return -1;
 }
+
 
 RTLSDR_API enum rtlsdr_tuner rtlsdr_get_tuner_type( rtlsdr_dev_t *dev )
 {
@@ -370,6 +390,7 @@ RTLSDR_API enum rtlsdr_tuner rtlsdr_get_tuner_type( rtlsdr_dev_t *dev )
 	return RTLSDR_TUNER_UNKNOWN;
 }
 
+
 RTLSDR_API int rtlsdr_get_tuner_gains( rtlsdr_dev_t *dev, int *gains )
 {
 	HERE();
@@ -378,7 +399,8 @@ RTLSDR_API int rtlsdr_get_tuner_gains( rtlsdr_dev_t *dev, int *gains )
 	return -1;
 }
 
-RTLSDR_API int rtlsdr_set_tuner_gain(rtlsdr_dev_t *dev, int gain)
+
+RTLSDR_API int rtlsdr_set_tuner_gain( rtlsdr_dev_t *dev, int gain )
 {
 	HERE();
 	if ( dev != NULL )
@@ -386,7 +408,8 @@ RTLSDR_API int rtlsdr_set_tuner_gain(rtlsdr_dev_t *dev, int gain)
 	return -1;
 }
 
-RTLSDR_API int rtlsdr_get_tuner_gain(rtlsdr_dev_t *dev)
+
+RTLSDR_API int rtlsdr_get_tuner_gain( rtlsdr_dev_t *dev )
 {
 	HERE();
 	if ( dev != NULL )
@@ -394,7 +417,11 @@ RTLSDR_API int rtlsdr_get_tuner_gain(rtlsdr_dev_t *dev)
 	return -1;
 }
 
-RTLSDR_API int rtlsdr_set_tuner_if_gain(rtlsdr_dev_t *dev, int stage, int gain)
+
+RTLSDR_API int rtlsdr_set_tuner_if_gain( rtlsdr_dev_t *dev
+									   , int stage
+									   , int gain
+									   )
 {
 	HERE();
 	if ( dev != NULL )
@@ -403,6 +430,7 @@ RTLSDR_API int rtlsdr_set_tuner_if_gain(rtlsdr_dev_t *dev, int stage, int gain)
 }
 
 #if 1	//  ADDED_STAGE_GAIN_MATERIAL
+
 RTLSDR_API int rtlsdr_get_tuner_stage_gains( rtlsdr_dev_t *dev
 										   , uint8_t stage
 										   , int32_t *gains
@@ -415,6 +443,7 @@ RTLSDR_API int rtlsdr_get_tuner_stage_gains( rtlsdr_dev_t *dev
 	return -1;
 }
 
+
 RTLSDR_API int rtlsdr_get_tuner_stage_count( rtlsdr_dev_t *dev )
 {
 	HERE();
@@ -423,7 +452,10 @@ RTLSDR_API int rtlsdr_get_tuner_stage_count( rtlsdr_dev_t *dev )
 	return -1;
 }
 
-RTLSDR_API int rtlsdr_get_tuner_stage_gain(rtlsdr_dev_t *dev, uint8_t stage )
+
+RTLSDR_API int rtlsdr_get_tuner_stage_gain( rtlsdr_dev_t *dev
+										  , uint8_t stage
+										  )
 {
 	HERE();
 	if ( dev != NULL )
@@ -431,7 +463,11 @@ RTLSDR_API int rtlsdr_get_tuner_stage_gain(rtlsdr_dev_t *dev, uint8_t stage )
 	return -1;
 }
 
-RTLSDR_API int rtlsdr_set_tuner_stage_gain(rtlsdr_dev_t *dev, uint8_t stage, int32_t gain)
+
+RTLSDR_API int rtlsdr_set_tuner_stage_gain( rtlsdr_dev_t *dev
+										  , uint8_t stage
+										  , int32_t gain
+										  )
 {
 	HERE();
 	if ( dev != NULL )
@@ -440,7 +476,8 @@ RTLSDR_API int rtlsdr_set_tuner_stage_gain(rtlsdr_dev_t *dev, uint8_t stage, int
 }
 #endif	//  ADDED_STAGE_GAIN_MATERIAL
 
-RTLSDR_API int rtlsdr_set_tuner_gain_mode(rtlsdr_dev_t *dev, int manual)
+
+RTLSDR_API int rtlsdr_set_tuner_gain_mode( rtlsdr_dev_t *dev, int manual )
 {
 	HERE();
 	if ( dev != NULL )
@@ -449,7 +486,7 @@ RTLSDR_API int rtlsdr_set_tuner_gain_mode(rtlsdr_dev_t *dev, int manual)
 }
 
 
-RTLSDR_API int rtlsdr_set_sample_rate(rtlsdr_dev_t *dev, uint32_t rate)
+RTLSDR_API int rtlsdr_set_sample_rate( rtlsdr_dev_t *dev, uint32_t rate )
 {
 	HERE();
 	if ( dev != NULL )
@@ -457,7 +494,8 @@ RTLSDR_API int rtlsdr_set_sample_rate(rtlsdr_dev_t *dev, uint32_t rate)
 	return -1;
 }
 
-RTLSDR_API uint32_t rtlsdr_get_sample_rate(rtlsdr_dev_t *dev)
+
+RTLSDR_API uint32_t rtlsdr_get_sample_rate( rtlsdr_dev_t *dev )
 {
 	HERE();
 	if ( dev != NULL )
@@ -465,7 +503,8 @@ RTLSDR_API uint32_t rtlsdr_get_sample_rate(rtlsdr_dev_t *dev)
 	return -1;
 }
 
-RTLSDR_API uint32_t rtlsdr_get_corr_sample_rate(rtlsdr_dev_t *dev)
+
+RTLSDR_API uint32_t rtlsdr_get_corr_sample_rate( rtlsdr_dev_t *dev )
 {
 	HERE();
 	if ( dev != NULL )
@@ -473,7 +512,8 @@ RTLSDR_API uint32_t rtlsdr_get_corr_sample_rate(rtlsdr_dev_t *dev)
 	return -1;
 }
 
-RTLSDR_API int rtlsdr_set_testmode(rtlsdr_dev_t *dev, int on)
+
+RTLSDR_API int rtlsdr_set_testmode( rtlsdr_dev_t *dev, int on )
 {
 	HERE();
 	if ( dev != NULL )
@@ -481,7 +521,8 @@ RTLSDR_API int rtlsdr_set_testmode(rtlsdr_dev_t *dev, int on)
 	return -1;
 }
 
-RTLSDR_API int rtlsdr_set_agc_mode(rtlsdr_dev_t *dev, int on)
+
+RTLSDR_API int rtlsdr_set_agc_mode( rtlsdr_dev_t *dev, int on )
 {
 	HERE();
 	if ( dev != NULL )
@@ -489,7 +530,8 @@ RTLSDR_API int rtlsdr_set_agc_mode(rtlsdr_dev_t *dev, int on)
 	return -1;
 }
 
-RTLSDR_API int rtlsdr_set_direct_sampling(rtlsdr_dev_t *dev, int on)
+
+RTLSDR_API int rtlsdr_set_direct_sampling( rtlsdr_dev_t *dev, int on )
 {
 	HERE();
 	if ( dev != NULL )
@@ -497,13 +539,15 @@ RTLSDR_API int rtlsdr_set_direct_sampling(rtlsdr_dev_t *dev, int on)
 	return -1;
 }
 
-RTLSDR_API int rtlsdr_get_direct_sampling(rtlsdr_dev_t *dev)
+
+RTLSDR_API int rtlsdr_get_direct_sampling( rtlsdr_dev_t *dev )
 {
 	HERE();
 	if ( dev != NULL )
 		return ((rtlsdr*) dev )->rtlsdr_get_direct_sampling();
 	return -1;
 }
+
 
 RTLSDR_API int rtlsdr_set_offset_tuning( rtlsdr_dev_t *dev, int on )
 {
@@ -513,6 +557,7 @@ RTLSDR_API int rtlsdr_set_offset_tuning( rtlsdr_dev_t *dev, int on )
 	return -1;
 }
 
+
 RTLSDR_API int rtlsdr_get_offset_tuning( rtlsdr_dev_t *dev )
 {
 	HERE();
@@ -520,6 +565,7 @@ RTLSDR_API int rtlsdr_get_offset_tuning( rtlsdr_dev_t *dev )
 		return ((rtlsdr*) dev )->rtlsdr_get_offset_tuning();
 	return -1;
 }
+
 
 RTLSDR_API int rtlsdr_set_dithering( rtlsdr_dev_t *dev, int dither )
 {
@@ -529,7 +575,8 @@ RTLSDR_API int rtlsdr_set_dithering( rtlsdr_dev_t *dev, int dither )
 	return -1;
 }
 
-RTLSDR_API int rtlsdr_reset_buffer(rtlsdr_dev_t *dev)
+
+RTLSDR_API int rtlsdr_reset_buffer( rtlsdr_dev_t *dev )
 {
 	HERE();
 	if ( dev != NULL )
@@ -537,7 +584,12 @@ RTLSDR_API int rtlsdr_reset_buffer(rtlsdr_dev_t *dev)
 	return -1;
 }
 
-RTLSDR_API int rtlsdr_read_sync(rtlsdr_dev_t *dev, void *buf, int len, int *n_read)
+
+RTLSDR_API int rtlsdr_read_sync( rtlsdr_dev_t *dev
+							   , void *buf
+							   , int len
+							   , int *n_read
+							   )
 {
 	HERE();
 	if ( dev != NULL )
@@ -545,13 +597,18 @@ RTLSDR_API int rtlsdr_read_sync(rtlsdr_dev_t *dev, void *buf, int len, int *n_re
 	return -1;
 }
 
-RTLSDR_API int rtlsdr_wait_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx)
+
+RTLSDR_API int rtlsdr_wait_async( rtlsdr_dev_t *dev
+								, rtlsdr_read_async_cb_t cb
+								, void *ctx
+								)
 {
 	HERE();
 	if ( dev != NULL )
 		return ((rtlsdr*) dev )->rtlsdr_wait_async( cb, ctx );
 	return -1;
 }
+
 
 RTLSDR_API int rtlsdr_read_async( rtlsdr_dev_t *dev
 								, rtlsdr_read_async_cb_t cb
@@ -565,7 +622,8 @@ RTLSDR_API int rtlsdr_read_async( rtlsdr_dev_t *dev
 	return -1;
 }
 
-RTLSDR_API int rtlsdr_cancel_async(rtlsdr_dev_t *dev)
+
+RTLSDR_API int rtlsdr_cancel_async( rtlsdr_dev_t *dev )
 {
 	HERE();
 	if ( dev != NULL )
@@ -573,15 +631,72 @@ RTLSDR_API int rtlsdr_cancel_async(rtlsdr_dev_t *dev)
 	return -1;
 }
 
+
 RTLSDR_API const char* rtlsdr_get_version( void )
 {
 	HERE();
-	return rtlsdr::srtlsdr_get_version();
+	rtlsdr rtl;
+	return rtl.srtlsdr_get_version();
 }
+
 
 RTLSDR_API unsigned __int64 rtlsdr_get_version_int64( void )
 {
 	HERE();
-	return rtlsdr::srtlsdr_get_version_int64();
+	rtlsdr rtl;
+	return rtl.srtlsdr_get_version_int64();
 }
 
+
+RTLSDR_API int rtlsdr_get_tuner_bandwidths( rtlsdr_dev_t *dev
+										  , int *bandwidths 
+										  )
+{
+	HERE();
+	return ((rtlsdr*) dev )->rtlsdr_get_tuner_bandwidths( bandwidths );
+}
+
+
+RTLSDR_API int rtlsdr_set_tuner_bandwidth( rtlsdr_dev_t *dev, int bandwidth )
+{
+	HERE();
+	return ((rtlsdr*) dev )->rtlsdr_set_tuner_bandwidth( bandwidth );
+}
+
+
+RTLSDR_API int rtlsdr_get_bandwidth_set_name( rtlsdr_dev_t *dev
+											, int nSet
+											, char* pString
+											)
+{
+	HERE();
+	return ((rtlsdr*) dev )->rtlsdr_get_bandwidth_set_name( nSet, pString );
+}
+
+
+RTLSDR_API int rtlsdr_set_bandwidth_set( rtlsdr_dev_t *dev, int nSet )
+{
+	HERE();
+	return ((rtlsdr*) dev )->rtlsdr_set_bandwidth_set( nSet );
+}
+
+/*!
+ * Set the sample rate for the device, also selects the baseband filters
+ * according to the requested sample rate for tuners where this is possible.
+ *
+ * \param dev the device handle given by rtlsdr_open()
+ * \param samp_rate the sample rate to be set, possible values are:
+ * 		    225001 - 300000 Hz
+ * 		    900001 - 3200000 Hz
+ * 		    sample loss is to be expected for rates > 2400000
+ * \return 0 on success, -EINVAL on invalid rate
+ */
+
+
+#if defined( SET_SPECIAL_FILTER_VALUES )
+RTLSDR_API int rtlsdr_set_if_values( rtlsdr_dev_t *	dev, BYTE regA, BYTE regB, DWORD ifFreq )
+{
+	HERE();
+	return ((rtlsdr*) dev )->rtlsdr_set_if_values( dev, regA, regB, ifFreq );
+}
+#endif

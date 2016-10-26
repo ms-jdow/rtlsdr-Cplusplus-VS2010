@@ -159,8 +159,8 @@ protected:
 	bool						goodCatalog;
 	bool						dev_lost;
 
-	static RtlSdrAreaDef*		RtlSdrArea;
-	static Dongle*				Dongles;
+//	static RtlSdrAreaDef*		RtlSdrArea;
+//	static Dongle*				Dongles;
 	static CMyMutex				registry_mutex;
 };
 

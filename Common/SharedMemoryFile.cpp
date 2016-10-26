@@ -10,9 +10,6 @@ RtlSdrAreaDef	TestDongles =
 	32, 0
 };
 
-RtlSdrAreaDef*			RtlSdrArea = NULL;
-Dongle*					Dongles = NULL;
-
 SharedMemoryFile::SharedMemoryFile( void )
 	: active( false )
 	, sharedHandle( NULL )
@@ -179,9 +176,6 @@ bool SharedMemoryFile::CreateSharedArea( void )
 		sharedMem->MasterUpdate = false;
 	}
 
-	RtlSdrArea = sharedMem;
-	Dongles = RtlSdrArea->dongleArray;
-
 	//	TODOTODO Open/create the access MUTEX here.
 
 	TRACE( "0x%x SharedMemoryFile area @ %.8X for %X (%d)\n", this, sharedMem, size, size );
@@ -193,6 +187,3 @@ bool SharedMemoryFile::CreateSharedArea( void )
 void SharedMemoryFile::Close( void )
 {
 }
-
-SharedMemoryFile	SharedDongleData;
-

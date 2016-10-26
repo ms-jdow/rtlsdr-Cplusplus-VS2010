@@ -35,10 +35,10 @@
 #  define __SDR_IMPORT
 #endif
 
-#define rtlsdr_EXPORTS
+//#define RTSDR_EXPORTS
 
-#ifndef rtlsdr_STATIC
-#	ifdef rtlsdr_EXPORTS
+#ifndef RTSDR_STATIC
+#	ifdef RTSDR_EXPORT
 #	define RTLSDR_API __SDR_EXPORT
 #	else
 #	define RTLSDR_API __SDR_IMPORT

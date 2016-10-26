@@ -47,6 +47,6 @@ protected:
 
 extern rtlsdr_app theApp;
 #endif
-extern RtlSdrAreaDef				TestDongles;
-extern RtlSdrAreaDef*				RtlSdrArea;
-extern Dongle*						Dongles;
+//extern RtlSdrAreaDef				TestDongles;
+//extern RtlSdrAreaDef*				RtlSdrArea;
+//extern Dongle*						Dongles;
