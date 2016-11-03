@@ -840,7 +840,9 @@ void RtlSdrList::reinitDongles( void )
 			if (( dbindex = FindInMasterDB( &test, false )) < 0 )
 			{
 				//	Name not even present so add it to db.
-				Dongles[ RtlSdrArea->activeEntries++ ] = test;
+				Dongles[ RtlSdrArea->activeEntries ] = test;
+				WriteSingleRegistry( RtlSdrArea->activeEntries );
+				RtlSdrArea->activeEntries++;
 			}
 			else
 			if ( !test.duplicated )
@@ -850,6 +852,7 @@ void RtlSdrList::reinitDongles( void )
 				memcpy( tempd->usbpath, test.usbpath, MAX_USB_PATH );
 				Dongles[ dbindex ].busy = test.busy;
 				Dongles[ dbindex ].found = test.found;
+				WriteSingleRegistry( dbindex );
 			}
 			else
 			{
