@@ -324,7 +324,7 @@ void rtlsdr::rtlsdr_set_gpio_output( uint8_t gpio )
 	gpio = 1 << gpio;
 
 	r = rtlsdr_read_reg( SYSB, GPD, 1 );
-	rtlsdr_write_reg( SYSB, GPO, r & ~gpio, 1 );
+	rtlsdr_write_reg( SYSB, GPD, r & ~gpio, 1 ); // CARL: Changed from rtlsdr_write_reg(dev, SYSB, GPO, r & ~gpio, 1); must be a bug in the old code
 	r = rtlsdr_read_reg( SYSB, GPOE, 1 );
 	rtlsdr_write_reg( SYSB, GPOE, r | gpio, 1 );
 }
@@ -820,6 +820,7 @@ void rtlsdr::rtlsdr_init_baseband( void )
 	rtlsdr_set_fir();
 
 	/* enable SDR mode, disable DAGC (bit 5) */
+	/* Also Disable test mode */
 	rtlsdr_demod_write_reg( 0, 0x19, 0x05, 1 );
 
 	/* init FSM state-holding register */

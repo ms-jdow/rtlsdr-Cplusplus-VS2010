@@ -531,6 +531,15 @@ RTLSDR_API int rtlsdr_set_agc_mode( rtlsdr_dev_t *dev, int on )
 }
 
 
+RTLSDR_API int rtlsdr_set_bias_tee( rtlsdr_dev_t *dev, int on )
+{
+	HERE();
+	if ( dev != NULL )
+		return ((rtlsdr*) dev )->rtlsdr_set_bias_tee( on );
+	return -1;
+}
+
+
 RTLSDR_API int rtlsdr_set_direct_sampling( rtlsdr_dev_t *dev, int on )
 {
 	HERE();

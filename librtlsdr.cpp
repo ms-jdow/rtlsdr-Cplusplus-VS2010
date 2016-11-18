@@ -89,7 +89,8 @@ int rtlsdr::inReinitDongles = false;
 rtlsdr::rtlsdr( void )
 	: rate( 0 )
 	, rtl_xtal( 0 )
-	, direct_sampling ( 0 )
+	, direct_sampling( 0 )
+	, is_direct_sampling( false )
 	, tuner_type(( enum rtlsdr_tuner) 0 )
 	, tuner( NULL )
 	, tun_xtal( 0 )
@@ -100,6 +101,11 @@ rtlsdr::rtlsdr( void )
 	, corr( 0 )
 	, gain( 0 )
 	, gain_mode( GAIN_MODE_MANUAL )
+	, rtl_gain_mode( 0 )
+	, bias_tee( 0 )
+	, ditheron( 1 )
+	, tuner_bw_set( 0 )
+	, tuner_bw_val( 0 )
 	, tuner_initialized( -1 )
 	, spectrum_inversion( 0 )
 	// librtlsdr_dongle_comms
@@ -262,7 +268,7 @@ int rtlsdr::rtlsdr_set_if_freq( uint32_t in_freq, uint32_t *freq_out )
 
 	// Step sizes are apparently 28,8e6/2^22 or a touch under 7 Hz.
 	if_freq = (int32_t) (( rtl_xtal / 2 + (uint64_t) in_freq * TWO_POW( 22 )) / rtl_xtal ) * ( -1 );
-	if ( if_freq <= -0x200000 )			//	Effectively rtl_xtal/2 nominally 14.4 MHz
+	if ( if_freq <= -0x200000 )			//	-2097152 Effectively rtl_xtal/2 nominally 14.4 MHz
 	{
 		fprintf(stderr, "rtlsdr_set_if_freq(): %u Hz out of range for downconverter if_freq = %d\n", in_freq, if_freq);
 		TRACE( "rtlsdr_set_if_freq(): %u Hz out of range for downconverter if_freq = %d\n", in_freq, if_freq);
@@ -312,7 +318,7 @@ int rtlsdr::rtlsdr_set_xtal_freq( uint32_t rtl_freq, uint32_t tuner_freq )
 {
 	int r = 0;
 
-	if ( !devh )
+	if ( !devh  )
 		return -1;
 
 	rtlsdr_set_i2c_repeater( 0 );
@@ -321,7 +327,7 @@ int rtlsdr::rtlsdr_set_xtal_freq( uint32_t rtl_freq, uint32_t tuner_freq )
 	&&	(( rtl_freq < MIN_RTL_XTAL_FREQ ) || ( rtl_freq > MAX_RTL_XTAL_FREQ )))
 		return -2;
 
-	if ( rtl_freq > 0 && rtl_xtal != rtl_freq )
+	if (( rtl_freq > 0 ) && ( rtl_xtal != rtl_freq ) || is_direct_sampling)
 	{
 		rtl_xtal = rtl_freq;
 
@@ -330,7 +336,7 @@ int rtlsdr::rtlsdr_set_xtal_freq( uint32_t rtl_freq, uint32_t tuner_freq )
 			r = rtlsdr_set_sample_rate( rate );
 	}
 
-	if ( tun_xtal != tuner_freq )
+	if (( tuner != NULL ) && ( tun_xtal != tuner_freq ))
 	{
 		if ( tuner_freq == 0 )
 			tun_xtal = rtl_xtal;
@@ -662,12 +668,27 @@ int rtlsdr::rtlsdr_set_center_freq( uint32_t in_freq )
 	if ( tuner == NULL )
 		return rc;
 
-	if ( direct_sampling )
+	//	Even if we have direct sampling set bypass it and use real sampling
+	//	when the input frequency is too high.
+	if ( direct_sampling && ( in_freq <= 24000000 ))
 	{
+		if ( !is_direct_sampling )
+			rtlsdr_do_direct_sampling( true );
+		//  This path works for all dongles - sorta kinda.
 		tuner_lo = 0;
 	}
 	else
 	{
+		if ( is_direct_sampling )
+		{
+			freq = in_freq;
+			rtlsdr_do_direct_sampling( false );
+		}
+
+		//	This path will try to tune the tuner to the indicated frequency
+		//	with some exceptions.
+		//	For R820T family dongles this path will go into a tuner bypass
+		//	mode automatically at 14.4MHz. (TODO - is this optimum?)
 		rtlsdr_set_i2c_repeater( 1 );
 		r = tuner->set_freq( in_freq - offs_freq, &tuner_lo );
 		rtlsdr_set_i2c_repeater( 0 );
@@ -748,7 +769,7 @@ int rtlsdr::rtlsdr_get_freq_correction( void )
 
 int rtlsdr::rtlsdr_get_tuner_type( void )
 {
-	if ( !devh )
+	if ( !devh || !tuner )
 		return RTLSDR_TUNER_UNKNOWN;
 
 	return tuner_type;
@@ -852,10 +873,12 @@ int rtlsdr::rtlsdr_get_bandwidth_set_name( int nSet
 
 int rtlsdr::rtlsdr_set_bandwidth_set( int nSet )
 {
-	if ( tuner == NULL )
+	if ( !devh || !tuner || is_direct_sampling )
 		return -1;
-
-	return tuner->set_bandwidth_set( nSet );
+	int r = tuner->set_bandwidth_set( nSet );
+	if ( r >= 0 )
+		tuner_bw_set = nSet;
+	return r;
 }
 
 
@@ -863,7 +886,7 @@ int rtlsdr::rtlsdr_set_tuner_bandwidth( int bandwidth )
 {
 	int r = 0;
 
-	if ( tuner == NULL )
+	if ( !devh || !tuner || is_direct_sampling )
 		return -1;
 
 	if (( tuner_type == RTLSDR_TUNER_R820T )
@@ -874,6 +897,7 @@ int rtlsdr::rtlsdr_set_tuner_bandwidth( int bandwidth )
 		rtlsdr_set_i2c_repeater( 0 );
 		if ( r >= 0 )
 		{
+			tuner_bw_val = bandwidth;
 			/* This also sets required IF */
 			rtlsdr_set_center_freq( freq );
 		}
@@ -907,7 +931,7 @@ int rtlsdr::rtlsdr_set_tuner_gain( int in_gain )
 {
 	int r = 0;
 
-	if ( tuner == NULL )
+	if ( !devh || !tuner || is_direct_sampling )
 		return -1;
 
 	//	If we are in per stage gain mode protect
@@ -940,13 +964,14 @@ int rtlsdr::rtlsdr_set_tuner_if_gain( int stage, int gain )
 {
 	int r = 0;
 
-	if ( tuner == NULL )
+	if ( !devh || !tuner || is_direct_sampling )
 		return -1;
 
 	rtlsdr_set_i2c_repeater( 1 );
 	r = tuner->set_if_gain( stage, gain );
 	rtlsdr_set_i2c_repeater( 0 );
 
+	//	TODO - these should be cached someday...
 	return r;
 }
 
@@ -956,7 +981,7 @@ int rtlsdr::rtlsdr_get_tuner_stage_gains( uint8_t stage, int32_t *gains, char *d
 	const char *desc;
 	int len = 0;
 
-	if ( !devh || !tuner )
+	if ( !devh || !tuner || is_direct_sampling )
 		return -1;
 
 	len = tuner->get_tuner_stage_gains( stage, &gainptr, &desc );
@@ -981,14 +1006,14 @@ int rtlsdr::rtlsdr_get_tuner_stage_gains( uint8_t stage, int32_t *gains, char *d
 
 int rtlsdr::rtlsdr_get_tuner_stage_count( void )
 {
-	if ( !devh || !tuner )
+	if ( !devh || !tuner || is_direct_sampling )
 		return -1;
 	return tuner->get_tuner_stage_count();
 }
 
 int rtlsdr::rtlsdr_get_tuner_stage_gain( uint8_t stage )
 {
-	if ( !devh || !tuner )
+	if ( !devh || !tuner || is_direct_sampling )
 		return 0;
 
 	return tuner->get_tuner_stage_gain( stage );
@@ -998,12 +1023,13 @@ int rtlsdr::rtlsdr_set_tuner_stage_gain( uint8_t stage, int32_t gain )
 {
 	int rc;
 
-	if ( !devh || !tuner )
+	if ( !devh || !tuner || is_direct_sampling )
 		return -1;
 
 	rtlsdr_set_i2c_repeater( 2 );
 	rc = tuner->set_tuner_stage_gain( stage, gain );
 	rtlsdr_set_i2c_repeater( 0 );
+	//	TODOTODO - someday this should get remembered.
 	return rc;
 }
 
@@ -1011,9 +1037,10 @@ int rtlsdr::rtlsdr_set_tuner_gain_mode( int mode )
 {
 	int r = 0;
 
-	if ( tuner == NULL )
+	if ( !devh || !tuner || is_direct_sampling )
 		return -1;
-	if ( mode < GAIN_MODE_STAGES )
+
+	if ((DWORD) mode < (DWORD) GAIN_MODE_STAGES )
 	{
 		rtlsdr_set_i2c_repeater( 1 );
 		r = tuner->set_gain_mode( mode );
@@ -1032,7 +1059,7 @@ int rtlsdr::rtlsdr_set_sample_rate( uint32_t samp_rate )
 	uint32_t real_rsamp_ratio;
 	double real_rate;
 
-	if ( !devh)
+	if ( !devh )
 		return -1;
 
 	rtlsdr_set_i2c_repeater( 0 );
@@ -1060,37 +1087,39 @@ int rtlsdr::rtlsdr_set_sample_rate( uint32_t samp_rate )
 		TRACE( "Exact sample rate is: %f Hz\n", real_rate);
 	}
 
-	rtlsdr_set_i2c_repeater( 1 );
-	r = tuner->set_bw((int) real_rate );
-	rtlsdr_set_i2c_repeater( 0 );
-	if (( r >= 0 )
-	&&	(( tuner_type == RTLSDR_TUNER_R820T )
-	||	 ( tuner_type == RTLSDR_TUNER_R828D )))
+	if (( tuner != NULL ) && !is_direct_sampling )
 	{
-		nominal_if_freq = r;
-		if ( freq > 0 )
-			rtlsdr_set_center_freq( freq );	// rtlsdr_set_if_freq
-		else
-			rtlsdr_set_center_freq( 500000000 );	// rtlsdr_set_if_freq
-		r = 0;
+		rtlsdr_set_i2c_repeater( 1 );
+		r = tuner->set_bw((int) real_rate );
+		rtlsdr_set_i2c_repeater( 0 );
+		if (( r >= 0 )
+		&&	(( tuner_type == RTLSDR_TUNER_R820T )
+		||	 ( tuner_type == RTLSDR_TUNER_R828D )))
+		{
+			nominal_if_freq = r;
+			if ( freq > 0 )
+				rtlsdr_set_center_freq( freq );	// rtlsdr_set_if_freq
+			else
+				rtlsdr_set_center_freq( 500000000 );	// rtlsdr_set_if_freq
+			r = 0;
+		}
+		rate = (uint32_t) real_rate;
+
+		tmp = ( rsamp_ratio >> 16 );
+		r |= rtlsdr_demod_write_reg( 1, 0x9f, tmp, 2 );
+		tmp = rsamp_ratio & 0xffff;
+		r |= rtlsdr_demod_write_reg( 1, 0xa1, tmp, 2 );
+
+		r |= rtlsdr_set_sample_freq_correction( corr );
+
+		/* reset demod (bit 3, soft_rst) */
+		r |= rtlsdr_demod_write_reg( 1, 0x01, 0x14, 1 );
+		r |= rtlsdr_demod_write_reg( 1, 0x01, 0x10, 1 );
+
+		/* recalculate offset frequency if offset tuning is enabled */
+		if ( offs_freq )
+			rtlsdr_set_offset_tuning( 1 );
 	}
-	rate = (uint32_t) real_rate;
-
-	tmp = ( rsamp_ratio >> 16 ) ;
-	r |= rtlsdr_demod_write_reg( 1, 0x9f, tmp, 2 );
-	tmp = rsamp_ratio & 0xffff;
-	r |= rtlsdr_demod_write_reg( 1, 0xa1, tmp, 2 );
-
-	r |= rtlsdr_set_sample_freq_correction( corr );
-
-	/* reset demod (bit 3, soft_rst) */
-	r |= rtlsdr_demod_write_reg( 1, 0x01, 0x14, 1 );
-	r |= rtlsdr_demod_write_reg( 1, 0x01, 0x10, 1 );
-
-	/* recalculate offset frequency if offset tuning is enabled */
-	if ( offs_freq )
-		rtlsdr_set_offset_tuning( 1 );
-
 	return r;
 }
 
@@ -1116,28 +1145,61 @@ int rtlsdr::rtlsdr_set_testmode( int on )
 
 int rtlsdr::rtlsdr_set_agc_mode( int on )
 {
-	if ( !devh )
+	if ( !devh || !tuner || is_direct_sampling )
 		return -1;
 
 	rtlsdr_set_i2c_repeater( 0 );
 
+	rtl_gain_mode = on;
+
 	return rtlsdr_demod_write_reg( 0, 0x19, on ? 0x25 : 0x05, 1);
+}
+
+int rtlsdr::rtlsdr_set_bias_tee( int on )
+{
+	if ( !devh || !tuner || is_direct_sampling )
+ 		return -1;
+
+	rtlsdr_set_gpio_output( 0 );
+	rtlsdr_set_gpio_bit( 0, on );
+	bias_tee = on;
+	return 0;
 }
 
 int rtlsdr::rtlsdr_set_direct_sampling( int on )
 {
-	int r = 0;
-
 	if ( !devh )
 		return -1;
 
 	if ( on == direct_sampling )
 		return 0;
 
+//	if ( direct_sampling )
+//		rtlsdr_do_direct_sampling( true );
+	direct_sampling = on;
+
+#if 0
+	/* retune now that we have changed the config */
+	//	But note that the center frequency may not
+	//	have been set yet.
+	int r = -1;
+	if ( freq > offs_freq )
+		r = rtlsdr_set_center_freq( freq );
+	return r;
+#else
+	return 0;
+#endif
+}
+
+
+int rtlsdr::rtlsdr_do_direct_sampling( bool on )
+{
+	int r = 0;
+
 	rtlsdr_set_i2c_repeater( 0 );
 
 	/* common to all direct modes */
-	if ( on )
+	if (( direct_sampling != 0 ) && on )
 	{
 		if ( tuner != NULL )
 		{
@@ -1152,19 +1214,23 @@ int rtlsdr::rtlsdr_set_direct_sampling( int on )
 		/* only enable In-phase ADC input */
 		r |= rtlsdr_demod_write_reg( 0, 0x08, 0x4d, 1 );
 
-		/* swap I and Q ADC, this allows to select between two inputs */
-		r |= rtlsdr_demod_write_reg( 0, 0x06, ( on == 2 ) ? 0x90 : 0x80, 1);
+		/* swap I and Q ADC, this allows selection between two inputs */
+		r |= rtlsdr_demod_write_reg( 0, 0x06, ( direct_sampling == 2 ) ? 0x90 : 0x80, 1);
 
 		/* disable spectrum inversion */
 		r |= set_spectrum_inversion( 0 );
 
-		fprintf(stderr, "Enabled direct sampling mode, input %i\n", on);
-		TRACE( "Enabled direct sampling mode, input %i\n", on);
-		direct_sampling = on;
+		fprintf( stderr, "Enabled direct sampling mode, input %i\n", direct_sampling );
+		TRACE( "Enabled direct sampling mode, input %i\n", direct_sampling );
+
+		/* Direct sampling is active now. */
+		is_direct_sampling = true;
 	}
 	else
 	{
-		/* disable direct sampling */
+		/* direct sampling is not active */
+		is_direct_sampling = false;
+
 		if ( tuner != NULL )
 		{
 			rtlsdr_set_i2c_repeater( 1 );
@@ -1181,7 +1247,12 @@ int rtlsdr::rtlsdr_set_direct_sampling( int on )
 			/* only enable In-phase ADC input */
 			r |= rtlsdr_demod_write_reg( 0, 0x08, 0x4d, 1 );
 
-			/* Already configured */
+			/* the R82XX use 3.57 MHz IF for the DVB-T 6 MHz mode, and
+			 * 4.57 MHz for the 8 MHz mode */
+			rtlsdr_set_if_freq( R82XX_DEFAULT_IF_FREQ, NULL );
+
+			/* enable spectrum inversion */
+			rtlsdr_demod_write_reg( 1, 0x15, 0x01, 1 );
 		}
 		else
 		{
@@ -1192,19 +1263,63 @@ int rtlsdr::rtlsdr_set_direct_sampling( int on )
 			r |= rtlsdr_demod_write_reg( 1, 0xb1, 0x1b, 1 );
 		}
 
+		/* Now we fill in the last known good tuner values as best we can. */
+		if ( tuner != NULL )
+			tuner->set_xtal_frequency( rtl_xtal );
+
+		rtlsdr_set_sample_rate( rate );
+
 		/* opt_adc_iq = 0, default ADC_I/ADC_Q datapath */
 		r |= rtlsdr_demod_write_reg( 0, 0x06, 0x80, 1 );
 
-		fprintf(stderr, "Disabled direct sampling mode\n");
-		TRACE( "Disabled direct sampling mode\n");
-		direct_sampling = 0;
-	}
+		//	Now reset operating modes.
 
-	/* retune now that we have changed the config */
-	//	But note that the center frequency may not
-	//	have been set yet.
-	if ( freq > offs_freq )
-		r = rtlsdr_set_center_freq( freq );
+		//	rtlagcmode                  rtl_gain_mode
+		rtlsdr_set_i2c_repeater( 0 );
+		rtlsdr_demod_write_reg( 0, 0x19, rtl_gain_mode ? 0x25 : 0x05, 1);
+
+		//	gain mode                   gainmode
+		rtlsdr_set_i2c_repeater( 1 );
+		tuner->set_gain_mode( gain_mode );
+
+		//	gain                        gain
+		tuner->set_gain( gain );
+
+		//	Offset                      offs_freq
+		rtlsdr_set_offset_tuning( offs_freq != 0 );
+
+
+		//	stage gains                 TODO
+//		//	xtalfrequency               rtl_xtal, tun_xtal
+//		int rx = rtl_xtal;
+//		int tx = tun_xtal;
+//		rtl_xtal = DEF_RTL_XTAL_FREQ;
+//		tun_xtal = DEF_RTL_XTAL_FREQ;
+//		rtlsdr_set_xtal_freq( rtl_xtal, tun_xtal );
+
+		//	Frequency Correction        corr
+		int ppm = corr;
+		corr = 0;
+		rtlsdr_set_freq_correction( ppm );
+
+		//	Balances
+		//	TODOTODO
+
+		//	IFBwSet                     tuner_bw_set
+		tuner->set_bandwidth_set( tuner_bw_set );
+
+		//	IFBwHz                      tuner_bw_val
+		rtlsdr_set_tuner_bandwidth( tuner_bw_val );
+
+		//	dithering                   ditheron
+		tuner->set_dither( ditheron );
+
+		//	bias t                      bias_tee    BOTH ON AND OFF need work.		
+		rtlsdr_set_bias_tee( bias_tee );
+
+		fprintf( stderr, "Disabled direct sampling mode\n" );
+		TRACE( "Disabled direct sampling mode\n");
+	}
 
 	return r;
 }
@@ -1218,7 +1333,7 @@ int rtlsdr::rtlsdr_set_offset_tuning( int on )
 {
 	int r = 0;
 
-	if ( !devh )
+	if ( !devh || !tuner || is_direct_sampling )
 		return -1;
 
 	rtlsdr_set_i2c_repeater( 0 );
@@ -1227,19 +1342,16 @@ int rtlsdr::rtlsdr_set_offset_tuning( int on )
 	||	( tuner_type == RTLSDR_TUNER_R828D ))
 		return -2;
 
-	if ( direct_sampling )
+	if ( direct_sampling )	//  Note that R820T dongles do not get here.
 		return -3;
 
 	/* based on keenerds 1/f noise measurements */
 	offs_freq = on ? (( rate / 2 ) * 170 / 100 ) : 0;
 
-	if ( tuner !=  NULL )
-	{
-		rtlsdr_set_i2c_repeater( 1 );
-		r = tuner->set_bw( on ? ( 2 * offs_freq ) : rate );
-		rtlsdr_set_i2c_repeater( 0 );
-		//	Of course no special R820x dongle stuff is needed.
-	}
+	rtlsdr_set_i2c_repeater( 1 );
+	r = tuner->set_bw( on ? ( 2 * offs_freq ) : rate );
+	rtlsdr_set_i2c_repeater( 0 );
+	//	Of course no special R820x dongle stuff is needed.
 
 
 	/* retune now that we have changed the config */
@@ -1260,9 +1372,13 @@ int rtlsdr::rtlsdr_set_dithering( int dither )
 {
 	if ( tuner_type == RTLSDR_TUNER_R820T )
 	{
-		return tuner->set_dither( dither );
+		int r = -1;
+		if ( !devh || !tuner || is_direct_sampling )
+			r = tuner->set_dither( dither );
+		if ( r =  0 )
+			ditheron = dither;
 	}
-	return 1;
+	return -1;
 }
 
 uint32_t rtlsdr::rtlsdr_get_device_count( void )
@@ -1588,6 +1704,8 @@ int rtlsdr::rtlsdr_open_( uint32_t index, bool devindex /* = true*/ )
 	if ( r < 0 )
 		goto err;
 
+	rtlsdr_set_bias_tee( 0 );	//	Kill bias T for safety.
+
 	active_index = index;
 
 	//	Now we "really" open the device and discover the tuner type.
@@ -1739,11 +1857,13 @@ int rtlsdr::rtlsdr_close( void )
 	if (( devh == NULL ) && ( ctx == NULL ))
 		return -1;
 
-	if ((DWORD) active_index >= RtlSdrArea->activeEntries )
-		return 0;						//  Already closed or illegal dongle
-
 	if ( devh != NULL )
 	{
+		rtlsdr_set_i2c_repeater( 0 );
+
+		// Turn off the bias tee
+		//rtlsdr_set_gpio_output(dev, 0);
+		rtlsdr_set_gpio_bit( 0, 0 );
 
 		rtlsdr_set_i2c_repeater( 0 );
 
@@ -1788,8 +1908,12 @@ int rtlsdr::rtlsdr_close( void )
 		libusb_exit( ctx );
 		ctx = NULL;
 	}
-	Dongles[ active_index ].busy = false;
-	WriteSingleRegistry( active_index );
+
+	if ((DWORD) active_index >= RtlSdrArea->activeEntries )
+	{
+		Dongles[ active_index ].busy = false;
+		WriteSingleRegistry( active_index );
+	}
 	active_index = -1;
 	return 0;
 }
@@ -2236,7 +2360,9 @@ bool rtlsdr::reinitDongles( void )
 			if (( dbindex = rtlsdr::FindInMasterDB( &test, false )) < 0 )
 			{
 				//	Name not even present so add it to db.
-				Dongles[ RtlSdrArea->activeEntries++ ] = test;
+				Dongles[ RtlSdrArea->activeEntries ] = test;
+				WriteSingleRegistry( RtlSdrArea->activeEntries );
+				RtlSdrArea->activeEntries++;
 			}
 			else
 			if ( !test.duplicated )
@@ -2246,6 +2372,7 @@ bool rtlsdr::reinitDongles( void )
 				memcpy( tempd->usbpath, test.usbpath, MAX_USB_PATH );
 				Dongles[ dbindex ].busy = test.busy;
 				Dongles[ dbindex ].found = test.found;
+				WriteSingleRegistry( dbindex );
 			}
 			else
 			{

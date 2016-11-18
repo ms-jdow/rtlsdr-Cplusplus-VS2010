@@ -136,8 +136,8 @@ copy /Y "$(TargetPath)" "$(SolutionDir)SDR Radio V2\$(TargetFileName)"
 copy /Y "$(TargetPath)" "$(SolutionDir)SDR Radio V3\$(TargetFileName)"
 rem copy /Y "$(TargetPath)" "D:\Projects\VS2010\Ham Radio\SDR-Radio\Console\SDRSourceRTL2832U\SDR Radio V2\$(TargetFileName)"
 copy /Y "$(TargetPath)" "D:\Projects\VS2010\Ham Radio\SDR-Radio\Console\SDRSourceRTL2832U\SDR Radio V3\$(TargetFileName)"
- copy /Y "$(TargetPath)" "D:\Projects\VS2010\Ham Radio\RtlTool\x64\Debug\$(TargetFileName)"
- copy /Y "$(TargetPath)" "D:\Projects\VS2010\Ham Radio\RtlTool - Test\x64\Debug\$(TargetFileName)"
+copy /Y "$(TargetPath)" "D:\Projects\VS2010\Ham Radio\RtlTool\x64\Debug\$(TargetFileName)"
+copy /Y "$(TargetPath)" "D:\Projects\VS2010\Ham Radio\RtlTool - Test\x64\Debug\$(TargetFileName)"
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>

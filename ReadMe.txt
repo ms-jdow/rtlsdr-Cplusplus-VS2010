@@ -467,4 +467,3 @@ RTLSDR_API int rtlsdr_set_if_values     ( rtlsdr_dev_t *dev
                                         , DWORD         ifFreq
                                         );
 
-#endif

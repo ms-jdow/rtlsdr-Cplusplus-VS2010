@@ -688,6 +688,7 @@ void RtlSdrList::reinitDongles( void )
 			const rtlsdr_dongle_t * known = find_known_device( dd.idVendor
 															 , dd.idProduct
 															 );
+			TRACE( _T( "Vendor ID 0x%04x\n" ), dd.idVendor );
 			if ( known == NULL )
 				continue;
 

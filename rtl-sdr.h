@@ -440,6 +440,11 @@ RTLSDR_API int rtlsdr_set_agc_mode(rtlsdr_dev_t *dev, int on);
 RTLSDR_API int rtlsdr_set_direct_sampling(rtlsdr_dev_t *dev, int on);
 
 /*!
+ * Enable or disable the bias tee on GPIO PIN 0.
+ */
+RTLSDR_API int rtlsdr_set_bias_tee(rtlsdr_dev_t *dev, int on);
+
+/*!
  * Get state of the direct sampling mode
  *
  * \param dev the device handle given by rtlsdr_open()

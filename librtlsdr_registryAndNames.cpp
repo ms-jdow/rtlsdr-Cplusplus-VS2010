@@ -186,6 +186,9 @@ uint32_t rtlsdr::WriteSingleRegistry( int index )
 	HKEY    hRtlsdrKey	= NULL;
 	DWORD	status;
 
+	if ( index < 0 )
+		return -1;
+
 	// Just to be sure - clear everthing here
 	resVal = RegCreateKeyEx( HKEY_CURRENT_USER
 						   , REGISTRYBASE	//_T( "Software\\rtlsdr" )
@@ -514,6 +517,9 @@ int rtlsdr::open_requested_device( libusb_context *ctx
 
 	//	This must be done after the call.
 	libusb_free_device_list( list, 1 );
+
+	if ( ldevh == NULL )
+		rtlsdr_close();
 
 	return r;
 }

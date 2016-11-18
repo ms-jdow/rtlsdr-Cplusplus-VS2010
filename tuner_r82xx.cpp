@@ -850,26 +850,24 @@ int r82xxTuner::r82xx_set_mux( uint32_t freq )
 
 int r82xxTuner::r82xx_set_pll( uint32_t freq, uint32_t *freq_out )
 {
-	int rc, i;
-//	unsigned sleep_time = 10000;
+	int rc;
 	uint64_t vco_freq;
 	uint64_t vco_div;
 	uint32_t vco_min = 1750000; /* kHz */
-//	uint32_t vco_max = vco_min * 2; /* kHz */
 	uint32_t freq_khz;
 	uint32_t pll_ref;
 	uint32_t sdm = 0;
 	uint8_t mix_div = 2;
-//	uint8_t div_buf = 0;
 	uint8_t div_num = 0;
 	uint8_t vco_power_ref = 2;
 	uint8_t refdiv2 = 0;
 	uint8_t ni;
 	uint8_t si;
 	uint8_t nint;
-//	uint8_t vco_fine_tune;
 	uint8_t val;
+#if 0	// Variable VCO current
 	uint8_t data[ 5 ];
+#endif
 
 	r82xx_write_batch_init();
 
@@ -987,6 +985,7 @@ int r82xxTuner::r82xx_set_pll( uint32_t freq, uint32_t *freq_out )
 	if ( rc < 0 )
 		return rc;
 
+#if 0	// Variable VCO current
 	/* pw_sdm */
 	if ( sdm == 0 )
 		val = 0x08;
@@ -999,6 +998,15 @@ int r82xxTuner::r82xx_set_pll( uint32_t freq, uint32_t *freq_out )
 	rc = r82xx_write_reg_mask( 0x12, val, 0x18 );
 	if ( rc < 0 )
 		return rc;
+#else
+	val = 0;
+	if ( m_disable_dither )
+		val |= 0x10;
+
+	rc = r82xx_write_reg_mask( 0x12, val, 0x10 );
+	if ( rc < 0 )
+		return rc;
+#endif
 
 	rc = r82xx_write_reg( 0x16, sdm >> 8 );
 	if ( rc < 0 )
@@ -1018,7 +1026,8 @@ int r82xxTuner::r82xx_set_pll( uint32_t freq, uint32_t *freq_out )
 		}
 	}
 
-	for ( i = 0; i < 2; i++ )
+#if 0	// Variable VCO current
+	for ( int i = 0; i < 2; i++ )
 	{
 //		usleep_range(sleep_time, sleep_time + 1000);
 
@@ -1045,6 +1054,10 @@ int r82xxTuner::r82xx_set_pll( uint32_t freq, uint32_t *freq_out )
 		TRACE( "[R82XX] PLL not locked!\n");
 		return -42;
 	}
+#else
+	/* VCO power off */
+	rc = r82xx_write_reg_mask( 0x12, 0x0, 0xe0 );
+#endif
 
 	/* set pll autotune = 8kHz */
 	rc = r82xx_write_reg_mask( 0x1a, 0x08, 0x08);
@@ -1992,6 +2005,9 @@ int r82xxTuner::r82xx_init( void )
 	   so there's no need to call r82xx_set_if_filter here */
 
 	rc |= r82xx_sysfreq_sel();
+	
+	/* set VCO current = 100 */
+	rc = r82xx_write_reg_mask( 0x12, 0x00, 0xe0 );
 
 	m_pll_low_limit = PLL_INITIAL_LOW;
 	m_pll_high_limit = PLL_INITIAL_HIGH;

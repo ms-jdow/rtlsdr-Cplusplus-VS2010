@@ -76,6 +76,7 @@ protected:	// The real work.
 	int			rtlsdr_open_				( uint32_t index
 											, bool devindex = true
 											);
+	int			rtlsdr_do_direct_sampling	( bool on );
 	
 public:
 	int			rtlsdr_set_xtal_freq		( uint32_t rtl_freq
@@ -132,6 +133,7 @@ public:
 	uint32_t	rtlsdr_get_corr_sample_rate	( void );
 	int			rtlsdr_set_testmode			( int on );
 	int			rtlsdr_set_agc_mode			( int on );
+	int			rtlsdr_set_bias_tee			( int on );
 	int			rtlsdr_set_direct_sampling	( int on );
 	int			rtlsdr_get_direct_sampling
 											( void );
@@ -168,7 +170,7 @@ public:
 
 	int			rtlsdr_get_tuner_type		( int index );
 #if defined SET_SPECIAL_FILTER_VALUES
-	int rtlsdr_set_if_values				( rtlsdr_dev_t *dev
+	int			rtlsdr_set_if_values		( rtlsdr_dev_t *dev
 											, BYTE			regA
 											, BYTE			regB
 											, DWORD			ifFreq
@@ -216,6 +218,7 @@ private:
 	uint32_t								rtl_xtal; /* Hz */
 	int										fir[ FIR_LEN ];
 	int										direct_sampling;
+	int										is_direct_sampling;
 	/* tuner context */
 	enum rtlsdr_tuner						tuner_type;
 	ITuner *								tuner;
@@ -227,6 +230,11 @@ private:
 	int										corr; /* ppm */
 	int										gain; /* tenth dB */
 	int										gain_mode;
+	int										rtl_gain_mode;
+	int										bias_tee;
+	int										ditheron;
+	int										tuner_bw_set;
+	int										tuner_bw_val;
 	/* status */
 	ITuner*									tunerset[ RTLSDR_TUNER_R828D + 1 ];
 
