@@ -1415,49 +1415,46 @@ int r82xxTuner::r82xx_enable_manual_gain( uint8_t in_gain_mode )
 	if ( in_gain_mode >= MAX_TUNER_GAIN_MODES )
 		in_gain_mode = GAIN_MODE_MANUAL;
 
-	if ( gain_mode != in_gain_mode )
+	rc = r82xx_read( 0x00, data, sizeof( data ));
+	if ( rc < 0 )
+		return rc;
+
+	if ( in_gain_mode )
 	{
-		rc = r82xx_read( 0x00, data, sizeof( data ));
+		/* LNA auto off */
+		rc = r82xx_write_reg_mask( 0x05, 0x10, 0x10 );
 		if ( rc < 0 )
 			return rc;
 
-		if ( in_gain_mode )
-		{
-			/* LNA auto off */
-			rc = r82xx_write_reg_mask( 0x05, 0x10, 0x10 );
-			if ( rc < 0 )
-				return rc;
-
-			 /* Mixer auto off */
-			rc = r82xx_write_reg_mask( 0x07, 0x00, 0x10 );
-			if ( rc < 0 )
-				return rc;
-
-		}
-		else
-		{
-			/* LNA */
-			rc = r82xx_write_reg_mask( 0x05, 0, 0x10 );
-			if ( rc < 0 )
-				return rc;
-
-			/* Mixer */
-			rc = r82xx_write_reg_mask( 0x07, 0x10, 0x10 );
-			if ( rc < 0 )
-				return rc;
-
-			/* set fixed VGA gain for now (26.5 dB) */
-			rc = r82xx_write_reg_mask( 0x0c, 0x0b, 0x9f );
-			if ( rc < 0 )
-				return rc;
-		}
-		rc = r82xx_read( 0x00, data, sizeof( data) );
+			/* Mixer auto off */
+		rc = r82xx_write_reg_mask( 0x07, 0x00, 0x10 );
 		if ( rc < 0 )
 			return rc;
 
-		gain_mode = in_gain_mode;
-		r82xx_compute_gain_table();
 	}
+	else
+	{
+		/* LNA */
+		rc = r82xx_write_reg_mask( 0x05, 0, 0x10 );
+		if ( rc < 0 )
+			return rc;
+
+		/* Mixer */
+		rc = r82xx_write_reg_mask( 0x07, 0x10, 0x10 );
+		if ( rc < 0 )
+			return rc;
+
+		/* set fixed VGA gain for now (26.5 dB) */
+		rc = r82xx_write_reg_mask( 0x0c, 0x0b, 0x9f );
+		if ( rc < 0 )
+			return rc;
+	}
+	rc = r82xx_read( 0x00, data, sizeof( data) );
+	if ( rc < 0 )
+		return rc;
+
+	gain_mode = in_gain_mode;
+	r82xx_compute_gain_table();
 
 	if ( gain_mode == GAIN_MODE_MANUAL )
 		return 0; /* compatibility to old mode API */
