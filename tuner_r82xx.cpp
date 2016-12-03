@@ -27,6 +27,8 @@
 #include <stdint.h>
 #include <string.h>
 
+//#define VCO_CURRENT
+
 typedef struct rtlsdr_dev rtlsdr_dev_t;
 
 #include "tuner_r82xx.h"
@@ -865,7 +867,7 @@ int r82xxTuner::r82xx_set_pll( uint32_t freq, uint32_t *freq_out )
 	uint8_t si;
 	uint8_t nint;
 	uint8_t val;
-#if 0	// Variable VCO current
+#if defined( VCO_CURRENT) // Variable VCO current
 	uint8_t data[ 5 ];
 #endif
 
@@ -904,14 +906,13 @@ int r82xxTuner::r82xx_set_pll( uint32_t freq, uint32_t *freq_out )
 	//	regardless of mix_div. Thus the tune frequencies can go as high as 1750 +
 	//	f_if or about 1756 with Oliver's code. The low end is about 21.3 Mhz
 
-#if 0 // documentation
-	/*	mutability////
+#if defined( VCO_CURRENT)	/*	mutability////
 	rc = r82xx_read(priv, 0x00, data, sizeof(data));
 	if (rc < 0)
 		return rc;
 	vco_fine_tune = (data[4] & 0x30) >> 4;
 	*/
-	vco_fine_tune = 2;
+	uint8_t vco_fine_tune = 2;
 
 	if (vco_fine_tune > vco_power_ref)	// vco_power_ref = 1 or 2.
 		div_num = div_num - 1;
@@ -985,7 +986,7 @@ int r82xxTuner::r82xx_set_pll( uint32_t freq, uint32_t *freq_out )
 	if ( rc < 0 )
 		return rc;
 
-#if 0	// Variable VCO current
+#if defined( VCO_CURRENT)	// Variable VCO current
 	/* pw_sdm */
 	if ( sdm == 0 )
 		val = 0x08;
@@ -1026,7 +1027,7 @@ int r82xxTuner::r82xx_set_pll( uint32_t freq, uint32_t *freq_out )
 		}
 	}
 
-#if 0	// Variable VCO current
+#if defined( VCO_CURRENT)	// Variable VCO current
 	for ( int i = 0; i < 2; i++ )
 	{
 //		usleep_range(sleep_time, sleep_time + 1000);
@@ -1054,9 +1055,6 @@ int r82xxTuner::r82xx_set_pll( uint32_t freq, uint32_t *freq_out )
 		TRACE( "[R82XX] PLL not locked!\n");
 		return -42;
 	}
-#else
-	/* VCO power off */
-	rc = r82xx_write_reg_mask( 0x12, 0x0, 0xe0 );
 #endif
 
 	/* set pll autotune = 8kHz */
