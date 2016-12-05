@@ -257,7 +257,7 @@ int rtlsdr::rtlsdr_set_if_freq( uint32_t in_freq, uint32_t *freq_out )
 	uint8_t tmp;
 	int r;
 
-	if (!devh)
+	if ( !devh )
 		return -1;
 
 	rtlsdr_set_i2c_repeater( 0 );
@@ -266,7 +266,7 @@ int rtlsdr::rtlsdr_set_if_freq( uint32_t in_freq, uint32_t *freq_out )
 	if ( rtlsdr_get_xtal_freq( &rtl_xtal, NULL ))
 		return -2;
 
-	// Step sizes are apparently 28,8e6/2^22 or a touch under 7 Hz.
+	// Step sizes are apparently 28,8e6 / 2^22 or a touch under 7 Hz.
 	if_freq = (int32_t) (( rtl_xtal / 2 + (uint64_t) in_freq * TWO_POW( 22 )) / rtl_xtal ) * ( -1 );
 	if ( if_freq <= -0x200000 )			//	-2097152 Effectively rtl_xtal/2 nominally 14.4 MHz
 	{

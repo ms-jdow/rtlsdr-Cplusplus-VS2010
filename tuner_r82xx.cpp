@@ -861,7 +861,9 @@ int r82xxTuner::r82xx_set_pll( uint32_t freq, uint32_t *freq_out )
 	uint32_t sdm = 0;
 	uint8_t mix_div = 2;
 	uint8_t div_num = 0;
+#if defined( VCO_CURRENT) // Variable VCO current
 	uint8_t vco_power_ref = 2;
+#endif
 	uint8_t refdiv2 = 0;
 	uint8_t ni;
 	uint8_t si;
@@ -906,7 +908,10 @@ int r82xxTuner::r82xx_set_pll( uint32_t freq, uint32_t *freq_out )
 	//	regardless of mix_div. Thus the tune frequencies can go as high as 1750 +
 	//	f_if or about 1756 with Oliver's code. The low end is about 21.3 Mhz
 
-#if defined( VCO_CURRENT)	/*	mutability////
+#if 0
+	if ( m_rafael_chip == CHIP_R828D )
+		vco_power_ref = 1;
+	/*	mutability////
 	rc = r82xx_read(priv, 0x00, data, sizeof(data));
 	if (rc < 0)
 		return rc;
@@ -914,14 +919,22 @@ int r82xxTuner::r82xx_set_pll( uint32_t freq, uint32_t *freq_out )
 	*/
 	uint8_t vco_fine_tune = 2;
 
-	if (vco_fine_tune > vco_power_ref)	// vco_power_ref = 1 or 2.
+//	if ( CHIP_R828D )
+//		vco_power_ref = 1;
+//	else
+//		vco_power_ref = 2;
+	//	828  2  1
+	//	oth  2  2
+	if ( vco_fine_tune > vco_power_ref )	// vco_power_ref = 1 or 2.
 		div_num = div_num - 1;
-	else if (vco_fine_tune < vco_power_ref)
+	else
+	if ( vco_fine_tune < vco_power_ref )
 		div_num = div_num + 1;
-#endif
-
+#else
+	//	This is the short version of the above.
 	if ( m_rafael_chip == CHIP_R828D )
 		div_num = div_num - 1;
+#endif
 
 
 	rc = r82xx_write_reg_mask( 0x10, div_num << 5, 0xe0 );
