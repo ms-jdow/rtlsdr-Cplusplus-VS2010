@@ -60,7 +60,7 @@ const rtlsdr_dongle_t known_devices[] =
 					, "PixelView", "PV-DT235U(RN)" },
 	{ 0x15f4, 0x0131, "* Astrometa DVB-T/DVB-T2"
 					, "Astrometa", "DVB-T/DVB-T2" },
-	{ 0x15f4, 0x0133, "* HanfTek DVB-T"
+	{ 0x15f4, 0x0133, "* HanfTek DAB+FM+DVB-T"
 					, "HanfTek", "DVB-T" },
 	{ 0x185b, 0x0620, "* Compro Videomate U620F"
 					, "Compro", "Videomate U620F"},
