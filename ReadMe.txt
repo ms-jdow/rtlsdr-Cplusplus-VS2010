@@ -471,3 +471,4 @@ RTLSDR_API int rtlsdr_set_if_values     ( rtlsdr_dev_t *dev
 TODO list
 1) GPIO http://lea.hamradio.si/~s57uuu/mischam/rtlsdr/ports.html
 2) Arrange for only one Catalog at a time to run.
+3) Gain profiles may be defective....
