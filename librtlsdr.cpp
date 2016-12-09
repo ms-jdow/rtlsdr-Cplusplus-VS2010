@@ -94,7 +94,7 @@ rtlsdr::rtlsdr( void )
 	, tuner_type(( enum rtlsdr_tuner) 0 )
 	, tuner( NULL )
 	, tun_xtal( 0 )
-	, freq( 0 )
+	, freq( 500000000 )
 	, offs_freq( 0 )
 	, effective_freq( 0 )
 	, nominal_if_freq( 0 )
@@ -156,13 +156,13 @@ rtlsdr::~rtlsdr()
 {
 	rtlsdr_close();
 	int i = 0;
-	delete tunerset[ i++ ];
-	delete tunerset[ i++ ];
-	delete tunerset[ i++ ];
-	delete tunerset[ i++ ];
-	delete tunerset[ i++ ];
-	delete tunerset[ i++ ];
-	delete tunerset[ i++ ];
+	delete (dummy_Tuner*) tunerset[ i++ ];
+	delete (e4kTuner*) tunerset[ i++ ];
+	delete (fc0012Tuner*) tunerset[ i++ ];
+	delete (fc0013Tuner*) tunerset[ i++ ];
+	delete (fc2580Tuner*) tunerset[ i++ ];
+	delete (r82xxTuner*) tunerset[ i++ ];
+	delete (r82xxTuner*) tunerset[ i++ ];
 	SharedDongleData.Close();
 }
 
@@ -175,7 +175,7 @@ void rtlsdr::ClearVars( void )
 	tuner_type = ( enum rtlsdr_tuner) 0;
 	tuner = NULL;
 	tun_xtal = 0;
-	freq = 0;
+	freq = 100000000;
 	offs_freq = 0;
 	effective_freq = 0;
 	corr = 0;

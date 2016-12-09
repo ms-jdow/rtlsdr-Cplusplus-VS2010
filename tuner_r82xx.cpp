@@ -430,6 +430,7 @@ r82xxTuner::r82xxTuner( rtlsdr* base, enum rtlsdr_tuner type )
 	, gain_mode( 0 )
 	, m_CurBWSet( BWSNdefault )
 	, m_FilterInfo( NULL )
+	, m_bandwidths( NULL )
 {
 	memset( stagegains, 0, sizeof( stagegains ));
 	r82xx_calculate_stage_gains();
@@ -441,7 +442,8 @@ r82xxTuner::r82xxTuner( rtlsdr* base, enum rtlsdr_tuner type )
 
 r82xxTuner::~r82xxTuner( void )
 {
-	delete m_bandwidths;
+	if ( m_bandwidths )
+		delete m_bandwidths;
 }
 
 
@@ -2143,7 +2145,9 @@ void r82xxTuner::r82xx_SetBWValues( int nSet )
 		m_FilterInfo = m_FilterInfo1;
 		size = sizeof( m_FilterInfo1 ) / sizeof( tFilterInfo );
 	}
-	
+
+	if ( m_bandwidths )
+		delete m_bandwidths;
 	m_bandwidths = new uint32_t[ size ];
 	if ( m_bandwidths )
 	{
