@@ -477,10 +477,32 @@ RTLSDR_API int rtlsdr_get_offset_tuning(rtlsdr_dev_t *dev);
  * Fails for other tuners.
  *
  * \param dev the device handle given by rtlsdr_open()
- * \param on 0 means disabled, 1 enabled
+ * \param dither 0 means disabled, 1 enabled
  * \return 0 on success
  */
 RTLSDR_API int rtlsdr_set_dithering(rtlsdr_dev_t *dev, int dither);
+
+/*!
+ * Enable or disable individual RTL2832 chip GPIO bits
+ * Known bit definitions
+ *	0  is the typical bias-t bit.
+ *
+ * \param dev The device handle given by rtlsdr_open()
+ * \param bit The desired bit to change, 0..7
+ * \param enableout 0 means pit is input, 1 pin is output
+ * \param on 0 means disabled, 1 enabled
+ * \return 0 on success, < 0 is a failure
+ */
+RTLSDR_API int rtlsdr_set_gpio_bit(rtlsdr_dev_t *dev, int bit, int enableout, int on);
+
+/*!
+ * Enable or disable individual RTL2832 chip GPIO bits
+ * 
+ * \param dev The device handle given by rtlsdr_open()
+ * \param bit The desired bit to change, 0..7
+ * \return bit state on success, < 0 is a failure
+ */
+RTLSDR_API int rtlsdr_get_gpio_bit(rtlsdr_dev_t *dev, int bit);
 
 /* streaming functions */
 

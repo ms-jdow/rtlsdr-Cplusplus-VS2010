@@ -60,7 +60,7 @@ public:
 protected:
 	HDEVNOTIFY		hDevNotify;
 	RtlSdrList		donglelist;
-	CWinThread*		thread;
+	CWinThread*		threadRunning;
 	CWinThread*		threadPending;
 	CWinThread*		flagThread;
 	CTrayIconManager*

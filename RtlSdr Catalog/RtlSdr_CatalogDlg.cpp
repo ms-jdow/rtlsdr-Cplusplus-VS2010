@@ -68,7 +68,7 @@ END_MESSAGE_MAP()
 CRtlSdr_CatalogDlg::CRtlSdr_CatalogDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(CRtlSdr_CatalogDlg::IDD, pParent)
 	, hDevNotify( NULL )
-	, thread( NULL )
+	, threadRunning( NULL )
 	, threadPending( NULL )
 	, flagThread( NULL )
 	, flagThreadRunning( false )
@@ -235,9 +235,15 @@ void CRtlSdr_CatalogDlg::OnDestroy( void )
 
 void CRtlSdr_CatalogDlg::OnFind( void )
 {
-	m_ctlFind.EnableWindow( false );
-	m_ctl_MasterList.EnableWindow( false );
-	thread = AfxBeginThread( threadstarter, this );
+	if ( threadRunning == NULL )
+	{
+		m_ctlFind.EnableWindow( false );
+		m_ctl_MasterList.EnableWindow( false );
+		threadRunning = AfxBeginThread( threadstarter, this );
+	}
+	else
+	if ( threadPending == NULL )
+		threadPending = AfxBeginThread( threadstarter, this );
 }
 
 
@@ -366,23 +372,24 @@ BOOL CRtlSdr_CatalogDlg::OnDeviceChange( UINT nEvent
 		switch( nEvent )
 		{
 		case DBT_DEVICEARRIVAL:
-			TRACE( "Info %s just appeared thread = 0x%x\n", di->dbcc_name, thread );
+			TRACE( "Info %s just appeared thread = 0x%x\n", di->dbcc_name, threadRunning );
 			//	Start a thread to run GetCatalog()
-			if ( thread == NULL )
+			if ( threadRunning == NULL )
 			{
 				m_ctl_MasterList.EnableWindow( false );
+				//	Give USB time to get its beans in order.
 				Sleep( 5000 );
-				thread = AfxBeginThread( threadstarter, this );
+				threadRunning = AfxBeginThread( threadstarter, this );
 			}
 			else
 			if ( threadPending == NULL )
 				threadPending = AfxBeginThread( threadstarter, this );
 			break;
 		case DBT_DEVICEREMOVECOMPLETE:
-			TRACE( "Info %s just vanished thread = 0x%x\n", di->dbcc_name, thread );
+			TRACE( "Info %s just vanished thread = 0x%x\n", di->dbcc_name, threadRunning );
 			//	Start a thread to run GetCatalog()
-			if ( thread == NULL )
-				thread = AfxBeginThread( threadstarter, this );
+			if ( threadRunning == NULL )
+				threadRunning = AfxBeginThread( threadstarter, this );
 			else
 			if ( threadPending == NULL )
 				threadPending = AfxBeginThread( threadstarter, this );
@@ -392,19 +399,27 @@ BOOL CRtlSdr_CatalogDlg::OnDeviceChange( UINT nEvent
 			break;
 		}
 	}
-	TRACE( "Thread = 0x%x this = 0x%x\n", thread, this );
+	TRACE( "threadRunning = 0x%x this = 0x%x\n", threadRunning, this );
 	return TRUE;
 }
 
 
 void CRtlSdr_CatalogDlg::ThreadFunction( void )
 {
-	TRACE( "Thread = 0x%x this = 0x%x threadPending 0x%x\n"
-		 , thread, this, threadPending );
+	TRACE( "threadRunning = 0x%x this = 0x%x threadPending 0x%x\n"
+		 , threadRunning, this, threadPending );
 	m_ctlFind.EnableWindow( false );
-	while( threadPending )
+
+	DWORD one = threadPending != NULL ? ::GetThreadId( threadPending->m_hThread ) : NULL;
+	DWORD two = ::GetCurrentThreadId();
+	TRACE( "Pending: %d this: %d\n", one, two );
+	while(( threadPending != NULL )
+	&&	  ( ::GetThreadId( threadPending->m_hThread ) == ::GetCurrentThreadId()))
+	{
+		TRACE( "Pending: %d this: %d\n", one, two );
 		Sleep( 100 );
-	TRACE( "Begin thread 0x%x\n", thread );
+	}
+	TRACE( "Begin threadRunning 0x%x\n", threadRunning );
 	m_ctl_MasterList.EnableWindow( false );
 	m_ctl_MasterList.ResetContent();
 	donglelist.GetCatalog();
@@ -427,27 +442,29 @@ void CRtlSdr_CatalogDlg::ThreadFunction( void )
 				   );
 		m_ctl_MasterList.AddString( name );
 	}
-	TRACE( "End Thread 0x%x\n", thread );
+	TRACE( "End threadRunning 0x%x\n", threadRunning );
 	if ( threadPending )
 	{
 		TRACE( "Thread Pending\n" );
+		//	Give USB time to get it's beans in order.
 		Sleep( 5000 );
 		if ( threadPending )
-			thread = threadPending;
+			//  Let the pending thread run.
+			threadRunning = threadPending;
 		else
 			m_ctl_MasterList.EnableWindow( true );
 		threadPending = NULL;
 		return;
 	}
 	m_ctl_MasterList.EnableWindow( true );
-	thread = NULL;
+	threadRunning = NULL;
 	m_ctlFind.EnableWindow( true );
 }
 
 
 void CRtlSdr_CatalogDlg::OnCbnDropdownDongleList( void )
 {
-	while( thread )
+	while( threadRunning )
 		Sleep( 100 );
 }
 

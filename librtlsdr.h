@@ -134,6 +134,11 @@ public:
 	int			rtlsdr_set_testmode			( int on );
 	int			rtlsdr_set_agc_mode			( int on );
 	int			rtlsdr_set_bias_tee			( int on );
+	int			rtlsdr_set_gpio_bit			( int bit
+											, int enable
+											, int on
+											);
+	int			rtlsdr_get_gpio_bit			( int bit );
 	int			rtlsdr_set_direct_sampling	( int on );
 	int			rtlsdr_get_direct_sampling
 											( void );

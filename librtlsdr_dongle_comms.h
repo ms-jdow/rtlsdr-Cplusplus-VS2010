@@ -69,10 +69,13 @@ protected:	//	Basic comms
 										, uint16_t val
 										, uint8_t len
 										);
-	void		rtlsdr_set_gpio_bit		( uint8_t gpio
+	void		_rtlsdr_set_gpio_bit	( uint8_t gpio
 										, int val
 										);
+	int			_rtlsdr_get_gpio_bit	( uint8_t gpio );
 	void		rtlsdr_set_gpio_output	( uint8_t gpio );
+	void		rtlsdr_set_gpio_input	( uint8_t gpio );
+	int			rtlsdr_get_gpio_output	( uint8_t gpio );
 	void		rtlsdr_set_i2c_repeater	( int on );
 	int			rtlsdr_i2c_write_fn		( uint8_t addr
 										, uint8_t *buf

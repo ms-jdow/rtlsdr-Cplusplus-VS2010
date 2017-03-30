@@ -585,6 +585,24 @@ RTLSDR_API int rtlsdr_set_dithering( rtlsdr_dev_t *dev, int dither )
 }
 
 
+RTLSDR_API int rtlsdr_set_gpio_bit(rtlsdr_dev_t *dev, int bit, int enableout, int on)
+{
+	HERE();
+	if ( dev != NULL )
+		return ((rtlsdr*) dev )->rtlsdr_set_gpio_bit( bit, enableout, on );
+	return -1;
+}
+
+
+RTLSDR_API int rtlsdr_get_gpio_bit(rtlsdr_dev_t *dev, int bit )
+{
+	HERE();
+	if ( dev != NULL )
+		return ((rtlsdr*) dev )->rtlsdr_get_gpio_bit( bit );
+	return -1;
+}
+
+
 RTLSDR_API int rtlsdr_reset_buffer( rtlsdr_dev_t *dev )
 {
 	HERE();

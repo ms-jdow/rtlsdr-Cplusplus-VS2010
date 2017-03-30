@@ -51,7 +51,7 @@ int fc0012Tuner::set_freq( uint32_t freq /* Hz */, uint32_t *lo_freq_out )
 	if ( lo_freq_out )
 		*lo_freq_out = freq;
 
-	rtldev->rtlsdr_set_gpio_bit( 6, ( freq > 300000000 ) ? 1 : 0 );
+	rtldev->rtlsdr_set_gpio_bit( 6, 1, ( freq > 300000000 ) ? 1 : 0 );
 	return fc0012_set_params( freq, 6000000 );
 }
 

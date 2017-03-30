@@ -87,6 +87,7 @@ int rtlsdr::rtlsdr_read_array( uint8_t block
 	return r;
 }
 
+
 int rtlsdr::rtlsdr_write_array( uint8_t block
 							  , uint16_t addr
 							  , uint8_t *data
@@ -118,6 +119,7 @@ int rtlsdr::rtlsdr_write_array( uint8_t block
 	return r;
 }
 
+
 int rtlsdr::rtlsdr_i2c_write_reg( uint8_t i2c_addr
 								, uint8_t reg
 								, uint8_t val
@@ -134,6 +136,7 @@ int rtlsdr::rtlsdr_i2c_write_reg( uint8_t i2c_addr
 	return rtlsdr_write_array( IICB, addr, (uint8_t *) &data, 2 );
 }
 
+
 uint8_t rtlsdr::rtlsdr_i2c_read_reg( uint8_t i2c_addr, uint8_t reg )
 {
 	if ( !devh )
@@ -148,6 +151,7 @@ uint8_t rtlsdr::rtlsdr_i2c_read_reg( uint8_t i2c_addr, uint8_t reg )
 	return data;
 }
 
+
 int rtlsdr::rtlsdr_i2c_write( uint8_t i2c_addr, uint8_t *buffer, int len )
 {
 	uint16_t addr = i2c_addr;
@@ -158,6 +162,7 @@ int rtlsdr::rtlsdr_i2c_write( uint8_t i2c_addr, uint8_t *buffer, int len )
 	return rtlsdr_write_array(  IICB, addr, buffer, len );
 }
 
+
 int rtlsdr::rtlsdr_i2c_read( uint8_t i2c_addr, uint8_t *buffer, int len )
 {
 	uint16_t addr = i2c_addr;
@@ -167,6 +172,7 @@ int rtlsdr::rtlsdr_i2c_read( uint8_t i2c_addr, uint8_t *buffer, int len )
 
 	return rtlsdr_read_array( IICB, addr, buffer, len );
 }
+
 
 uint16_t rtlsdr::rtlsdr_read_reg( uint8_t block, uint16_t addr, uint8_t len )
 {
@@ -195,6 +201,7 @@ uint16_t rtlsdr::rtlsdr_read_reg( uint8_t block, uint16_t addr, uint8_t len )
 
 	return reg;
 }
+
 
 int rtlsdr::rtlsdr_write_reg( uint8_t block
 							, uint16_t addr
@@ -233,6 +240,7 @@ int rtlsdr::rtlsdr_write_reg( uint8_t block
 	return r;
 }
 
+
 uint16_t rtlsdr::rtlsdr_demod_read_reg( uint8_t page
 									  , uint16_t addr
 									  , uint8_t len
@@ -265,6 +273,7 @@ uint16_t rtlsdr::rtlsdr_demod_read_reg( uint8_t page
 
 	return reg;
 }
+
 
 int rtlsdr::rtlsdr_demod_write_reg( uint8_t page
 								  , uint16_t addr
@@ -308,26 +317,59 @@ int rtlsdr::rtlsdr_demod_write_reg( uint8_t page
 	return ( r == len ) ? 0 : -1;
 }
 
-void rtlsdr::rtlsdr_set_gpio_bit( uint8_t gpio, int val )
+
+void rtlsdr::_rtlsdr_set_gpio_bit( uint8_t gpio, int val )
 {
 	uint16_t r;
 
 	gpio = 1 << gpio;
 	r = rtlsdr_read_reg( SYSB, GPO, 1 );
-	r = val ?  (r | gpio ) : ( r & ~gpio );
+	r = val ?  ( r | gpio ) : ( r & ~gpio );
 	rtlsdr_write_reg( SYSB, GPO, r, 1 );
 }
+
+int rtlsdr::_rtlsdr_get_gpio_bit( uint8_t gpio )
+{
+	gpio = 1 << gpio;
+	return rtlsdr_read_reg( SYSB, GPO, 1 ) != 0;
+}
+
 
 void rtlsdr::rtlsdr_set_gpio_output( uint8_t gpio )
 {
 	int r;
 	gpio = 1 << gpio;
 
+	//	Set data value to 0?
 	r = rtlsdr_read_reg( SYSB, GPD, 1 );
 	rtlsdr_write_reg( SYSB, GPD, r & ~gpio, 1 ); // CARL: Changed from rtlsdr_write_reg(dev, SYSB, GPO, r & ~gpio, 1); must be a bug in the old code
+	//	Now enable output.
 	r = rtlsdr_read_reg( SYSB, GPOE, 1 );
 	rtlsdr_write_reg( SYSB, GPOE, r | gpio, 1 );
 }
+
+
+void rtlsdr::rtlsdr_set_gpio_input( uint8_t gpio )
+{
+	int r;
+	gpio = 1 << gpio;
+
+	//	Set data value to 0?
+	r = rtlsdr_read_reg( SYSB, GPD, 1 );
+	rtlsdr_write_reg( SYSB, GPD, r & ~gpio, 1 ); // CARL: Changed from rtlsdr_write_reg(dev, SYSB, GPO, r & ~gpio, 1); must be a bug in the old code
+	// Now make pin an input.
+	r = rtlsdr_read_reg( SYSB, GPOE, 1 );
+	rtlsdr_write_reg( SYSB, GPOE, r | ~gpio, 1 );
+}
+
+
+int rtlsdr::rtlsdr_get_gpio_output( uint8_t gpio )
+{
+	gpio = 1 << gpio;
+
+	return ( rtlsdr_read_reg( SYSB, GPOE, 1 ) & gpio ) != 0;
+}
+
 
 void rtlsdr::rtlsdr_set_i2c_repeater( int on )
 {
@@ -362,6 +404,7 @@ int rtlsdr::rtlsdr_i2c_write_fn( uint8_t addr, uint8_t *buf, int len )
 	return -1;
 }
 
+
 int rtlsdr::rtlsdr_i2c_read_fn( uint8_t addr, uint8_t *buf, int len )
 {
 	int r;
@@ -378,6 +421,7 @@ int rtlsdr::rtlsdr_i2c_read_fn( uint8_t addr, uint8_t *buf, int len )
 	} while (retries > 0);
 	return -1;
 }
+
 
 //	Note about formatting for writing to the EEPROM. It seems that
 //	the rtl_eeprom.exe file writes a zero to the byte at the index
@@ -425,6 +469,7 @@ int rtlsdr::rtlsdr_write_eeprom_raw( eepromdata& data )
 
 	return 0;
 }
+
 
 #define EEPROM_READ_SIZE 1		//	Maximum safe read it appears.
 
@@ -482,7 +527,6 @@ int rtlsdr::rtlsdr_read_eeprom_raw( eepromdata& data )
 }
 
 
-
 int rtlsdr::rtlsdr_reset_buffer( void )
 {
 	if ( !devh )
@@ -496,6 +540,7 @@ int rtlsdr::rtlsdr_reset_buffer( void )
 	return 0;
 }
 
+
 int rtlsdr::rtlsdr_read_sync( BYTE *buf, int len, int *n_read)
 {
 	if (!devh)
@@ -504,12 +549,14 @@ int rtlsdr::rtlsdr_read_sync( BYTE *buf, int len, int *n_read)
 	return libusb_bulk_transfer( devh, 0x81, buf, len, n_read, BULK_TIMEOUT );
 }
 
+
 static void LIBUSB_CALL _libusb_callback( struct libusb_transfer *xfer )
 {
 	rtlsdr *dev = (rtlsdr *)xfer->user_data;
 	dev->libusb_callback( xfer );
 	
 }
+
 
 void rtlsdr::libusb_callback( struct libusb_transfer *xfer )
 {
@@ -542,10 +589,12 @@ void rtlsdr::libusb_callback( struct libusb_transfer *xfer )
 	}
 }
 
+
 int rtlsdr::rtlsdr_wait_async( rtlsdr_read_async_cb_t cb, void *ctx )
 {
 	return rtlsdr_read_async( cb, ctx, 0, 0 );
 }
+
 
 int rtlsdr::rtlsdr_alloc_async_buffers( void )
 {
@@ -597,6 +646,7 @@ unwind:
 	return -1;
 }
 
+
 int rtlsdr::rtlsdr_free_async_buffers( void )
 {
 	unsigned int i;
@@ -632,6 +682,7 @@ int rtlsdr::rtlsdr_free_async_buffers( void )
 
 	return 0;
 }
+
 
 int rtlsdr::rtlsdr_read_async( rtlsdr_read_async_cb_t in_cb
 							 , void *in_ctx
@@ -768,6 +819,7 @@ int rtlsdr::rtlsdr_read_async( rtlsdr_read_async_cb_t in_cb
 	return r;
 }
 
+
 int rtlsdr::rtlsdr_cancel_async( void )
 {
 	if ( !devh )
@@ -790,6 +842,7 @@ int rtlsdr::rtlsdr_cancel_async( void )
 #endif
 	return -2;
 }
+
 
 void rtlsdr::rtlsdr_init_baseband( void )
 {
@@ -847,6 +900,7 @@ void rtlsdr::rtlsdr_init_baseband( void )
 	rtlsdr_demod_write_reg( 0, 0x0d, 0x83, 1 );
 }
 
+
 int rtlsdr::rtlsdr_deinit_baseband( void )
 {
 	int r = 0;
@@ -869,10 +923,12 @@ int rtlsdr::rtlsdr_deinit_baseband( void )
 	return r;
 }
 
+
 bool rtlsdr::dummy_write( void )
 {
 	return  rtlsdr_write_reg( USBB, USB_SYSCTL, 0x09, 1 ) < 0;
 }
+
 
 //	Static // Compare sparse eeprom image with image built from Dongle entry.
 bool rtlsdr::CompareSparseRegAndData( Dongle*		dng

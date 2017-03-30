@@ -1160,11 +1160,42 @@ int rtlsdr::rtlsdr_set_bias_tee( int on )
 	if ( !devh || !tuner || is_direct_sampling )
  		return -1;
 
-	rtlsdr_set_gpio_output( 0 );
-	rtlsdr_set_gpio_bit( 0, on );
+	rtlsdr_set_gpio_output( 0 );		//	Set bit one to output.
+	rtlsdr_set_gpio_bit( 0, 1, on );
 	bias_tee = on;
 	return 0;
 }
+
+
+int rtlsdr::rtlsdr_set_gpio_bit( int bit, int enable, int on )
+{
+	int gpoe = 0;
+	int gpio = 1 << bit;
+	int isoutput = rtlsdr_get_gpio_output( bit );
+	if ( isoutput != enable )
+	{
+		if ( isoutput )
+			_rtlsdr_set_gpio_bit( 0, 0 );
+		rtlsdr_set_gpio_output( gpio );
+		return 0;
+	}
+	if ( enable )
+	{
+		_rtlsdr_set_gpio_bit( 0, on );
+		return 0;
+	}
+	return -1;
+}
+
+
+int rtlsdr::rtlsdr_get_gpio_bit( int bit )
+{
+	int isoutput = rtlsdr_get_gpio_output( bit );
+	if ( isoutput )
+		return -1;
+	return _rtlsdr_get_gpio_bit((uint8_t) bit );
+}
+
 
 int rtlsdr::rtlsdr_set_direct_sampling( int on )
 {
@@ -1771,8 +1802,10 @@ int rtlsdr::rtlsdr_open_( uint32_t index, bool devindex /* = true*/ )
 	rtlsdr_set_gpio_output( 5 );
 
 	/* reset tuner before probing */
-	rtlsdr_set_gpio_bit( 5, 1 );
-	rtlsdr_set_gpio_bit( 5, 0 );
+	_rtlsdr_set_gpio_bit( 5, 1 );
+	Sleep( 10 );
+	_rtlsdr_set_gpio_bit( 5, 0 );
+	Sleep( 10 );
 
 	reg = rtlsdr_i2c_read_reg( FC2580_I2C_ADDR, FC2580_CHECK_ADDR );
 	if (( reg & 0x7f ) == FC2580_CHECK_VAL )
@@ -1863,7 +1896,7 @@ int rtlsdr::rtlsdr_close( void )
 
 		// Turn off the bias tee
 		//rtlsdr_set_gpio_output(dev, 0);
-		rtlsdr_set_gpio_bit( 0, 0 );
+		rtlsdr_set_gpio_bit( 0, 0, 0 );
 
 		rtlsdr_set_i2c_repeater( 0 );
 
