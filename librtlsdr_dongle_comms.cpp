@@ -177,7 +177,7 @@ int rtlsdr::rtlsdr_i2c_read( uint8_t i2c_addr, uint8_t *buffer, int len )
 uint16_t rtlsdr::rtlsdr_read_reg( uint8_t block, uint16_t addr, uint8_t len )
 {
 	int r;
-	unsigned char data[ 2 ];
+	unsigned char data[ 2 ] = { 0, 0 };
 	uint16_t index = ( block << 8 );
 	uint16_t reg;
 
@@ -331,7 +331,9 @@ void rtlsdr::_rtlsdr_set_gpio_bit( uint8_t gpio, int val )
 int rtlsdr::_rtlsdr_get_gpio_bit( uint8_t gpio )
 {
 	gpio = 1 << gpio;
-	return rtlsdr_read_reg( SYSB, GPO, 1 ) != 0;
+	uint8_t bit = (uint8_t) rtlsdr_read_reg( SYSB, GPO, 1 );
+	bit &= gpio;
+	return bit != 0;
 }
 
 
@@ -342,10 +344,10 @@ void rtlsdr::rtlsdr_set_gpio_output( uint8_t gpio )
 
 	//	Set data value to 0?
 	r = rtlsdr_read_reg( SYSB, GPD, 1 );
-	rtlsdr_write_reg( SYSB, GPD, r & ~gpio, 1 ); // CARL: Changed from rtlsdr_write_reg(dev, SYSB, GPO, r & ~gpio, 1); must be a bug in the old code
+	r = rtlsdr_write_reg( SYSB, GPD, r & ~gpio, 1 ); // CARL: Changed from rtlsdr_write_reg(dev, SYSB, GPO, r & ~gpio, 1); must be a bug in the old code
 	//	Now enable output.
 	r = rtlsdr_read_reg( SYSB, GPOE, 1 );
-	rtlsdr_write_reg( SYSB, GPOE, r | gpio, 1 );
+	r = rtlsdr_write_reg( SYSB, GPOE, r | gpio, 1 );
 }
 
 
@@ -359,7 +361,7 @@ void rtlsdr::rtlsdr_set_gpio_input( uint8_t gpio )
 	rtlsdr_write_reg( SYSB, GPD, r & ~gpio, 1 ); // CARL: Changed from rtlsdr_write_reg(dev, SYSB, GPO, r & ~gpio, 1); must be a bug in the old code
 	// Now make pin an input.
 	r = rtlsdr_read_reg( SYSB, GPOE, 1 );
-	rtlsdr_write_reg( SYSB, GPOE, r | ~gpio, 1 );
+	rtlsdr_write_reg( SYSB, GPOE, r & ~gpio, 1 );
 }
 
 
@@ -367,7 +369,10 @@ int rtlsdr::rtlsdr_get_gpio_output( uint8_t gpio )
 {
 	gpio = 1 << gpio;
 
-	return ( rtlsdr_read_reg( SYSB, GPOE, 1 ) & gpio ) != 0;
+	uint8_t bit = (uint8_t) rtlsdr_read_reg( SYSB, GPOE, 1 );
+	bit &= gpio;
+
+	return ( bit ) != 0;
 }
 
 

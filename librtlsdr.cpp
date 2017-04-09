@@ -1170,20 +1170,29 @@ int rtlsdr::rtlsdr_set_bias_tee( int on )
 int rtlsdr::rtlsdr_set_gpio_bit( int bit, int enable, int on )
 {
 	int gpoe = 0;
-	int gpio = 1 << bit;
+	int r = 0;
+//	int gpio = 1 << bit;
 	int isoutput = rtlsdr_get_gpio_output( bit );
 	if ( isoutput != enable )
 	{
-		if ( isoutput )
-			_rtlsdr_set_gpio_bit( 0, 0 );
-		rtlsdr_set_gpio_output( gpio );
+		if ( enable )	// Then changing to output direction....
+		{
+			rtlsdr_set_gpio_output( bit );
+			_rtlsdr_set_gpio_bit( bit, on );
+		}
+		else
+		{
+			rtlsdr_set_gpio_input( bit );
+		}
 		return 0;
 	}
+	else
 	if ( enable )
 	{
-		_rtlsdr_set_gpio_bit( 0, on );
+		_rtlsdr_set_gpio_bit( bit, on );
 		return 0;
 	}
+
 	return -1;
 }
 
@@ -1191,8 +1200,9 @@ int rtlsdr::rtlsdr_set_gpio_bit( int bit, int enable, int on )
 int rtlsdr::rtlsdr_get_gpio_bit( int bit )
 {
 	int isoutput = rtlsdr_get_gpio_output( bit );
+	
 	if ( isoutput )
-		return -1;
+		return _rtlsdr_get_gpio_bit((uint8_t) bit ) | 0x10;
 	return _rtlsdr_get_gpio_bit((uint8_t) bit );
 }
 
@@ -1951,6 +1961,8 @@ int rtlsdr::rtlsdr_close( void )
 	return 0;
 }
 
+
+//	Special for FC2012
 uint32_t rtlsdr::rtlsdr_get_tuner_clock( void )
 {
 	uint32_t tuner_freq;
@@ -1964,6 +1976,7 @@ uint32_t rtlsdr::rtlsdr_get_tuner_clock( void )
 
 	return tuner_freq;
 }
+
 
 // Return true on success
 //	STATIC

@@ -489,18 +489,19 @@ RTLSDR_API int rtlsdr_set_dithering(rtlsdr_dev_t *dev, int dither);
  *
  * \param dev The device handle given by rtlsdr_open()
  * \param bit The desired bit to change, 0..7
- * \param enableout 0 means pit is input, 1 pin is output
+ * \param enableout 0 means pin is input, 1 pin is output
  * \param on 0 means disabled, 1 enabled
  * \return 0 on success, < 0 is a failure
  */
 RTLSDR_API int rtlsdr_set_gpio_bit(rtlsdr_dev_t *dev, int bit, int enableout, int on);
 
 /*!
- * Enable or disable individual RTL2832 chip GPIO bits
+ * Read state of individual RTL2832 chip GPIO bits
  * 
  * \param dev The device handle given by rtlsdr_open()
  * \param bit The desired bit to change, 0..7
- * \return bit state on success, < 0 is a failure
+ * \return if set to output then return bit state ored with 0x10
+ * else return bitstate.
  */
 RTLSDR_API int rtlsdr_get_gpio_bit(rtlsdr_dev_t *dev, int bit);
 
