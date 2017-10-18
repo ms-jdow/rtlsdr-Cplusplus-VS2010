@@ -202,6 +202,7 @@ rem copy "$(TargetPath)" "D:\Projects\VS2010\Ham Radio\SDR-Radio\Console\SDRSour
     <None Include="COPYING" />
     <None Include="README" />
     <None Include="ReadMe.txt" />
+    <None Include="TODO.txt" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common\DongleArrays.h" />

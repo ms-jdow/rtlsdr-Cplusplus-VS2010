@@ -19,6 +19,7 @@
     <None Include="AUTHORS" />
     <None Include="COPYING" />
     <None Include="README" />
+    <None Include="TODO.txt" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">

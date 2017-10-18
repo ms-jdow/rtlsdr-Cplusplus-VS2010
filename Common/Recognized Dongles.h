@@ -61,7 +61,7 @@ const rtlsdr_dongle_t known_devices[] =
 	{ 0x15f4, 0x0131, "* Astrometa DVB-T/DVB-T2"
 					, "Astrometa", "DVB-T/DVB-T2" },
 	{ 0x15f4, 0x0133, "* HanfTek DAB+FM+DVB-T"
-					, "HanfTek", "DVB-T" },
+					, "HanfTek", "DAB+FM+DVB-T" },
 	{ 0x185b, 0x0620, "* Compro Videomate U620F"
 					, "Compro", "Videomate U620F"},
 	{ 0x185b, 0x0650, "* Compro Videomate U650F"

@@ -7,6 +7,7 @@
 RtlSdrAreaDef	TestDongles =
 {
 	{ 'R', 'T', 'L', '-', 'S', 'D', 'R', 0 },
+	false, false,
 	32, 0
 };
 
