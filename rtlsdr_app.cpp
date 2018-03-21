@@ -7,6 +7,8 @@
 
 #include "rtlsdr_app.h"
 
+extern IRtlSdr* myrtlsdr;
+
 #define HERE()	 __noop
 //#define HERE() { CStringA msg; msg.Format( "API: %s\n", __FUNCTION__ ); OutputDebugStringA( msg ); }
 
@@ -186,6 +188,8 @@ static void CloseSdrDongle( rtlsdr* dongle )
 RTLSDR_API uint32_t rtlsdr_get_device_count( void )
 {
 	HERE();
+	if ( myrtlsdr )
+		return myrtlsdr->rtlsdr_get_device_count();
 	rtlsdr rtl;
 	return rtl.srtlsdr_get_device_count();
 }
@@ -194,6 +198,8 @@ RTLSDR_API uint32_t rtlsdr_get_device_count( void )
 RTLSDR_API const char* rtlsdr_get_device_name( uint32_t index )
 {
 	HERE();
+	if ( myrtlsdr )
+		return myrtlsdr->rtlsdr_get_device_name( index );
 	rtlsdr rtl;
 	return rtl.srtlsdr_get_device_name( index );
 }
@@ -206,6 +212,12 @@ RTLSDR_API int rtlsdr_get_device_usb_strings( uint32_t index
 											)
 {
 	HERE();
+	if ( myrtlsdr )
+		return myrtlsdr->rtlsdr_get_device_usb_strings( index
+													  , manufact
+													  , product
+													  , serial
+													  );
 	rtlsdr rtl;
 	return rtl.srtlsdr_get_device_usb_strings( index
 											 , manufact
@@ -222,6 +234,12 @@ RTLSDR_API int rtlsdr_get_device_usb_cstrings( uint32_t index
 											 )
 {
 	HERE();
+	if ( myrtlsdr )
+		return myrtlsdr->rtlsdr_get_device_usb_cstrings( index
+													   , manufact
+													   , product
+													   , serial
+													   );
 	rtlsdr rtl;
 	return rtl.srtlsdr_get_device_usb_strings( index
 											 , manufact
@@ -234,6 +252,8 @@ RTLSDR_API int rtlsdr_get_device_usb_cstrings( uint32_t index
 RTLSDR_API int rtlsdr_get_index_by_serial( const char *serial )
 {
 	HERE();
+	if ( myrtlsdr )
+		return myrtlsdr->rtlsdr_get_index_by_serial( serial );
 	rtlsdr rtl;
 	return rtl.srtlsdr_get_index_by_serial( serial );
 }
@@ -662,6 +682,8 @@ RTLSDR_API int rtlsdr_cancel_async( rtlsdr_dev_t *dev )
 RTLSDR_API const char* rtlsdr_get_version( void )
 {
 	HERE();
+	if ( myrtlsdr )
+		return myrtlsdr->rtlsdr_get_version();
 	rtlsdr rtl;
 	return rtl.srtlsdr_get_version();
 }
@@ -670,6 +692,8 @@ RTLSDR_API const char* rtlsdr_get_version( void )
 RTLSDR_API unsigned __int64 rtlsdr_get_version_int64( void )
 {
 	HERE();
+	if ( myrtlsdr )
+		return myrtlsdr->rtlsdr_get_version_int64();
 	rtlsdr rtl;
 	return rtl.srtlsdr_get_version_int64();
 }

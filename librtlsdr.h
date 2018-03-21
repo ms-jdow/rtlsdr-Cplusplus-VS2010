@@ -264,3 +264,5 @@ public:
 				srtlsdr_get_version_int64
 										( void );
 };
+
+extern IRtlSdr* myrtlsdr;

@@ -22,7 +22,7 @@ SharedMemoryFile::SharedMemoryFile( void )
 
 SharedMemoryFile::~SharedMemoryFile( void )
 {
-	TRACE( "0x%x ~SharedMemoryFile with ( 0x%x, 0x%x )\n", this, sharedMem, sharedHandle );
+	TRACE( "~SharedMemoryFile: 0x%x ~SharedMemoryFile with ( 0x%x, 0x%x )\n", this, sharedMem, sharedHandle );
 	if ( sharedMem != NULL )				// have a shared area mapped?
 		UnmapViewOfFile( sharedMem );		// unmap it
 	sharedMem = NULL;						// and forget it

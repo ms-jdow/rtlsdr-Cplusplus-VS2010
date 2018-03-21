@@ -84,6 +84,7 @@ static const int fir_default[ FIR_LEN ] =
 };
 
 int rtlsdr::inReinitDongles = false;
+IRtlSdr* myrtlsdr = NULL;
 //SharedMemoryFile	rtlsdr::SharedDongleData;
 
 rtlsdr::rtlsdr( void )
@@ -1182,6 +1183,8 @@ int rtlsdr::rtlsdr_set_gpio_bit( int bit, int enable, int on )
 		}
 		else
 		{
+			//	Turn the bit off before making it an input
+			_rtlsdr_set_gpio_bit( bit, 0 );
 			rtlsdr_set_gpio_input( bit );
 		}
 		return 0;
@@ -1745,6 +1748,18 @@ int rtlsdr::rtlsdr_open_( uint32_t index, bool devindex /* = true*/ )
 	if ( r < 0 )
 		goto err;
 
+	if ( devindex )
+	{
+		UINT i;
+		for( i = 0; i < (int) RtlSdrArea->activeEntries; i++ )
+		{
+			if ( Dongles[ i ].found == index )
+				index = i;
+		}
+		if ( i >= RtlSdrArea->activeEntries )
+			index = -1;
+	}
+
 	rtlsdr_set_bias_tee( 0 );	//	Kill bias T for safety.
 
 	active_index = index;
@@ -1880,10 +1895,12 @@ found:
 	tuner->set_xtal_frequency( rtl_xtal );
 
 	rtlsdr_set_i2c_repeater( 0 );
-	Dongles[ index ].busy = true;
-	m_dongle = Dongles[ index ];
-	WriteSingleRegistry( index );
-
+	if ( !devindex )
+	{
+		Dongles[ index ].busy = true;
+		m_dongle = Dongles[ index ];
+		WriteSingleRegistry( index );
+	}
 	return 0;
 
 err:
@@ -1906,7 +1923,8 @@ int rtlsdr::rtlsdr_close( void )
 
 		// Turn off the bias tee
 		//rtlsdr_set_gpio_output(dev, 0);
-		rtlsdr_set_gpio_bit( 0, 0, 0 );
+		for ( int i = 0; i < 8; i++ )
+			rtlsdr_set_gpio_bit( i, 0, 0 );
 
 		rtlsdr_set_i2c_repeater( 0 );
 
@@ -2262,7 +2280,7 @@ bool rtlsdr::reinitDongles( void )
 			//	enter the vid, pid, etc into the record.
 			dongle.vid		= dd.idVendor;
 			dongle.pid		= dd.idProduct;
-			dongle.found	= (char) i;
+//			dongle.found	= (char) i;
 
 			//	enter some "useful" default strings
 			CStringA manf;
@@ -2311,7 +2329,7 @@ bool rtlsdr::reinitDongles( void )
 #endif
 
 			rtlsdr work;
-			int res = work.rtlsdr_open((int) i );
+			int res = work.rtlsdr_open_((int) i, true );
 			if ( res >= 0 )
 			{
 				dongle.busy = false;	//	For comparisons....
@@ -2496,7 +2514,10 @@ void rtlsdr::GetCatalog( void )
 {
 	// Make sure shared memory areas are loaded for this.
 	if ( TestMaster())
+	{
+		TRACE( "Have good master (Shared memory area)\n" );
 		return;					//  We have known good data already.
+	}
 
 	//	Else master catalog tool not running so fall through
 	//	and do it the hard way.
@@ -2504,7 +2525,10 @@ void rtlsdr::GetCatalog( void )
 	//	test to see if the catalog started in the last second. Otherwise
 	//	use what we have.
 	if ( time( NULL ) - lastCatalog < CATALOG_TIMEOUT )
+	{
+		TRACE( "Catalog time is good\n" );
 		return;
+	}
 
 	ReadRegistry();
 	//	Now I must run through the interfaces and merge data.
@@ -2605,12 +2629,17 @@ extern "C"
 {
 	SDRDAPI IRtlSdr* CreateRtlSdr()
 	{
-		return new rtlsdr;
+		myrtlsdr = new rtlsdr;
+		return myrtlsdr;
 	}
 
 	SDRDAPI void DeleteRtlSdr( IRtlSdr* me)
 	{
-		delete (rtlsdr*) me;
+		if ( me == myrtlsdr )
+			delete (rtlsdr*) me;
+		else
+			::MessageBoxA( 0, "rtlsdr.dll", "This is not MY rtlsdr pointer", MB_OK | MB_ICONEXCLAMATION );
+		myrtlsdr = NULL;
 	}
 }
 
