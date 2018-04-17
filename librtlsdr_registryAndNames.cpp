@@ -470,12 +470,15 @@ int rtlsdr::open_requested_device( libusb_context *ctx
 	{
 		for ( uint32_t i = 0; i < cnt; i++ )
 		{
+			device = NULL;
 			device = list[ i ];
 			libusb_get_device_descriptor( list[ i ], &dd );
+			TRACE( "Device list %d, vid %x, pid %x\n", i, dd.idVendor, dd.idProduct );
 
 			if (( find_known_device( dd.idVendor, dd.idProduct ) )
 			&&	( index < (uint32_t) RtlSdrArea->activeEntries ))
 			{
+				TRACE( "  Found known device \"index\" %d, i %d\n", index, i );
 				BYTE portnums[ MAX_USB_PATH ] = { 0 };
 				int portcnt = libusb_get_port_numbers( list[ i ]
 													 , portnums
@@ -488,7 +491,19 @@ int rtlsdr::open_requested_device( libusb_context *ctx
 							   , portcnt
 							   ) == 0 )
 					{
-						break;
+						TRACE( "    Successful port match\n" );
+						//	This is done here so that if a dongle does not open
+						//	the software will look for a second match. JellyImages
+						//	seems to have a Dell computer which produces two
+						//	device list entries (2 and 4) for the same dongle.
+						//	And the first one does not work.
+						r = libusb_open( device, ldevh );
+						if ( r >= 0 )
+							break;
+					}
+					else
+					{
+						TRACE( "   Failed USB port match\n" );
 					}
 				}
 			}
@@ -498,7 +513,7 @@ int rtlsdr::open_requested_device( libusb_context *ctx
 
 	if ( device )
 	{
-		r = libusb_open( device, ldevh );
+//		r = libusb_open( device, ldevh );
 		if ( r < 0 )
 		{
 			ldevh = NULL;

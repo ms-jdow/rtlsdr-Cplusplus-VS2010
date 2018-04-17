@@ -1651,6 +1651,13 @@ int rtlsdr::basic_open( uint32_t index
 
 	dev_lost = 1;
 
+	libusb_device** devlist;
+	ssize_t dev_count = libusb_get_device_list( ctx, &devlist );
+	libusb_free_device_list( devlist, 1 );
+	if ( index >= (uint32_t) dev_count )
+		return -101;
+
+
 	r = open_requested_device( ctx, index, &ldevh, devindex );
 
 	if ( r < 0 )
@@ -2281,6 +2288,12 @@ bool rtlsdr::reinitDongles( void )
 			dongle.vid		= dd.idVendor;
 			dongle.pid		= dd.idProduct;
 //			dongle.found	= (char) i;
+			TRACE( "Found dongle candidate %d device %d, vid %x, pid %x\n"
+				 , reinit_dongles.GetCount()
+				 , i
+				 , dongle.vid
+				 , dongle.pid
+				 );
 
 			//	enter some "useful" default strings
 			CStringA manf;
@@ -2315,9 +2328,9 @@ bool rtlsdr::reinitDongles( void )
 				memset( dongle.usbpath, 0, sizeof( usbpath_t ));
 				TRACE( "	%d:  Error %d\n", i, err );
 			}
-#if 0	// For debugging
+#if 1	// For debugging
 			CString text;
-			text.Format( _T( "xxxxx Device %d 0x%x 0x%x:" ), i, dd.idVendor, dd.idProduct );
+			text.Format( _T( "xxxxx Device path %d 0x%x 0x%x:" ), i, dd.idVendor, dd.idProduct );
 			CString t2;
 			for( int g = 0; g < cnt; g++ )
 			{
@@ -2365,6 +2378,7 @@ bool rtlsdr::reinitDongles( void )
 				memcpy( dongle.prodIdStr, prod, prod.GetLength());
 				memset( dongle.sernIdStr, 0, MAX_STR_SIZE );
 				memcpy( dongle.sernIdStr, sern, sern.GetLength());
+				TRACE( "Dongle candidate strings, %s | %s | %s\n", manf, prod, sern );
 
 				//	We have it open - get the tunertype now
 				dongle.tunerType = work.rtlsdr_get_tuner_type();
