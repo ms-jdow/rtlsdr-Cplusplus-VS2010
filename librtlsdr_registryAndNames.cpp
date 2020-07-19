@@ -11,8 +11,9 @@ bool			rtlsdr::goodCatalog = false;
 
 #define REGISTRYBASE	_T( "Software\\rtlsdr" )
 
-CMyMutex	rtlsdr::registry_mutex( _T( "RtlSdr++ Mutex" ));
-CMyMutex	rtlsdr::dongle_mutex;
+//CMyMutex	rtlsdr::registry_mutex( _T( "RtlSdr++ Registry Mutex" ));
+//CMyMutex	rtlsdr::dongle_mutex( _T( "RtlSdr++ Dongle Mutex" ));
+CMyMutex	rtlsdr::rtlsdr_mutex( _T( "RtlSdr++ Mutex" ));
 
 
 //	STATIC	//
@@ -30,7 +31,7 @@ void rtlsdr::FillDongleArraysAndComboBox( CDongleArray * da
 		if ( da )
 			da->RemoveAll();
 
-		CMutexLock cml( dongle_mutex );
+		CMutexLock cml( rtlsdr_mutex );
 
 		INT_PTR comboselected = -1;
 		for( DWORD index = 0; index < RtlSdrArea->activeEntries; index++ )
@@ -65,7 +66,7 @@ void rtlsdr::FillDongleArraysAndComboBox( CDongleArray * da
 //	STATIC	//
 bool rtlsdr::GetDongleIdString( CString& string, int devindex )
 {
-	CMutexLock cml( dongle_mutex );
+	CMutexLock cml( rtlsdr_mutex );
 
 	string.Empty();
 	if ((DWORD) devindex >= RtlSdrArea->activeEntries )
@@ -96,7 +97,7 @@ bool rtlsdr::GetDongleIdString( CString& string, int devindex )
 //	STATIC	//		/// NOT USED
 int rtlsdr::FindDongleByIdString( LPCTSTR source )
 {
-	CMutexLock cml( dongle_mutex );
+	CMutexLock cml( rtlsdr_mutex );
 
 	CString test( source );
 	if ( test[ 0 ] == _T( '*' ))
@@ -129,7 +130,7 @@ int rtlsdr::FindDongleByIdString( LPCTSTR source )
 //	in the DongleArray "Add()" function.)
 void rtlsdr::WriteRegistry( void )
 {
-	CMutexLock cml( registry_mutex );
+	CMutexLock cml( rtlsdr_mutex );
 
 	DWORD   resVal;
 	HKEY    hRtlsdrKey	= NULL;
@@ -236,7 +237,7 @@ uint32_t rtlsdr::WriteSingleRegistry( int index )
 //	STATIC //
 void rtlsdr::WriteRegLastCatalogTime( void )
 {
-	CMutexLock cml( registry_mutex );
+	CMutexLock cml( rtlsdr_mutex );
 	DWORD   resVal;
 	HKEY    hRtlsdrKey	= NULL;
 	DWORD	status;
@@ -279,7 +280,7 @@ void rtlsdr::ReadRegistry( void )
 	if ( TestMaster())
 		return;					//  We have known good data already.
 
-	CMutexLock cml( registry_mutex );
+	CMutexLock cml( rtlsdr_mutex );
 
 	DWORD   resVal;
 	HKEY    hRtlsdrKey	= NULL;
@@ -360,7 +361,7 @@ void rtlsdr::ReadRegistry( void )
 
 void rtlsdr::mergeToMaster( Dongle& tempd )
 {
-	CMutexLock cml( registry_mutex );
+	CMutexLock cml( rtlsdr_mutex );
 
 	for ( DWORD mast = 0; mast < RtlSdrArea->activeEntries; mast++ )
 	{
@@ -463,11 +464,12 @@ int rtlsdr::open_requested_device( libusb_context *ctx
 	uint32_t cnt = (uint32_t) libusb_get_device_list( ctx, &list );
 
 	if ( devindex )
-	{
+	{	// We are a direct devlist index. So simply grab the "device"
 		device = list[ index ];
+		r = libusb_open( device, ldevh );
 	}
 	else
-	{
+	{	// Search for the nth recognized devie within the devlist
 		for ( uint32_t i = 0; i < cnt; i++ )
 		{
 			device = NULL;
@@ -485,7 +487,7 @@ int rtlsdr::open_requested_device( libusb_context *ctx
 													 , MAX_USB_PATH
 													 );
 				if ( portcnt > 0 )
-				{
+				{	// Test to see if this is the right device in the right location
 					if ( memcmp( portnums
 							   , &Dongles[ index ].usbpath
 							   , portcnt
@@ -513,7 +515,7 @@ int rtlsdr::open_requested_device( libusb_context *ctx
 
 	if ( device )
 	{
-//		r = libusb_open( device, ldevh );
+//		r = libusb_open( device, ldevh ); Done above because of Dell fix.
 		if ( r < 0 )
 		{
 			ldevh = NULL;
@@ -546,7 +548,7 @@ const rtlsdr_dongle_t * rtlsdr::find_known_device( uint16_t vid
 {
 	unsigned int i;
 	const rtlsdr_dongle_t *device = NULL;
-	CMutexLock cml( dongle_mutex );
+	CMutexLock cml( rtlsdr_mutex );
 
 	for ( i = 0; i < sizeof( known_devices ) / sizeof( rtlsdr_dongle_t ); i++ )
 	{
@@ -787,7 +789,7 @@ int rtlsdr::srtlsdr_get_index_by_serial( const char *serial )
 	if ( !cnt )
 		return -2;
 
-	CMutexLock cml( dongle_mutex );
+	CMutexLock cml( rtlsdr_mutex );
 
 	for ( i = 0; i < cnt; i++ )
 	{
@@ -840,7 +842,6 @@ int rtlsdr::GetDongleIndexFromNames( const CString& manufact
 // STATIC //	Do this within the dongles_lock mutex
 int rtlsdr::GetDongleIndexFromDongle( const Dongle dongle )
 {
-	CMutexLock cml( dongle_mutex );
 	for( DWORD i = 0; i < RtlSdrArea->activeEntries; i++ )
 	{
 		if ( Dongles[ i ] == dongle )

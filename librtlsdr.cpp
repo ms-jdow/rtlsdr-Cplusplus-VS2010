@@ -46,10 +46,11 @@
 //#endif
 
 /* libusb < 1.0.9 doesn't have libusb_handle_events_timeout_completed */
-#ifndef HAVE_LIBUSB_HANDLE_EVENTS_TIMEOUT_COMPLETED
-#define libusb_handle_events_timeout_completed(ctx, tv, c) \
-	libusb_handle_events_timeout(ctx, tv)
-#endif
+//#ifndef HAVE_LIBUSB_HANDLE_EVENTS_TIMEOUT_COMPLETED
+//
+//#define libusb_handle_events_timeout_completed(ctx, tv, c) \
+//	libusb_handle_events_timeout(ctx, tv)
+//#endif
 
 #define CATALOG_TIMEOUT		5		//	Not much changes in 5 seconds with dongles.
 
@@ -517,7 +518,7 @@ int rtlsdr::rtlsdr_write_eeprom( uint8_t *data, uint8_t offset, uint16_t len )
 	{
 		int parsed;
 		{
-			CMutexLock cml( dongle_mutex );
+			CMutexLock cml( rtlsdr_mutex );
 			//	Find our old entry in current list
 			olddongle.busy = true;
 			parsed = SafeFindDongle( olddongle );
@@ -536,7 +537,7 @@ int rtlsdr::rtlsdr_write_eeprom( uint8_t *data, uint8_t offset, uint16_t len )
 		//	It's a race that's too tiny to worry about with dongles.
 		if ( parsed >= 0 )
 		{
-			CMutexLock cml( registry_mutex );
+			CMutexLock cml( rtlsdr_mutex );
 			WriteSingleRegistry( parsed );
 			r = 0;
 		}
@@ -587,7 +588,7 @@ int rtlsdr::rtlsdr_read_eeprom( eepromdata& data )
 		bool changed = false;
 		int parsed = -1;
 		{
-			CMutexLock cml( dongle_mutex );
+			CMutexLock cml( rtlsdr_mutex );
 			if ( TestMaster())
 				//	Find our new entry since database is already updated.
 				parsed = SafeFindDongle( tdongle );
@@ -626,7 +627,7 @@ int rtlsdr::rtlsdr_read_eeprom( eepromdata& data )
 
 		if ( changed )
 		{
-			CMutexLock cml( registry_mutex );
+			CMutexLock cml( rtlsdr_mutex );
 			WriteSingleRegistry( parsed );
 		}
 	}
@@ -1419,7 +1420,7 @@ int rtlsdr::rtlsdr_set_dithering( int dither )
 		int r = -1;
 		if ( !devh || !tuner || is_direct_sampling )
 			r = tuner->set_dither( dither );
-		if ( r =  0 )
+		if ( r >= 0 )					// Jdow does make mistakes < 0 is error
 			ditheron = dither;
 	}
 	return -1;
@@ -1490,7 +1491,7 @@ int rtlsdr::srtlsdr_get_device_usb_strings( uint32_t index
 	{
 	case true:
 		{
-			CMutexLock cml( dongle_mutex );
+			CMutexLock cml( rtlsdr_mutex );
 			Dongle* dongle = NULL;
 			int tindex = 0;
 			dongle = &Dongles[ index ];
@@ -1563,7 +1564,7 @@ int rtlsdr::srtlsdr_get_device_usb_strings( uint32_t index
 	{
 	case true:
 		{
-			CMutexLock cml( dongle_mutex );
+			CMutexLock cml( rtlsdr_mutex );
 			Dongle* dongle = NULL;
 			int tindex = 0;
 			dongle = &Dongles[ index ];
@@ -1651,12 +1652,13 @@ int rtlsdr::basic_open( uint32_t index
 
 	dev_lost = 1;
 
+	//	We are opening by devlist index so test devlist size to make sure
+	//	the passed index is within range.
 	libusb_device** devlist;
 	ssize_t dev_count = libusb_get_device_list( ctx, &devlist );
 	libusb_free_device_list( devlist, 1 );
 	if ( index >= (uint32_t) dev_count )
 		return -101;
-
 
 	r = open_requested_device( ctx, index, &ldevh, devindex );
 
@@ -1947,10 +1949,15 @@ int rtlsdr::rtlsdr_close( void )
 #endif
 			}
 
-			libusb_release_interface( devh, 0 );
-
-			rtlsdr_deinit_baseband();
+//			libusb_release_interface( devh, 0 );
+//
+//			rtlsdr_deinit_baseband();
 		}
+
+		rtlsdr_deinit_baseband();		//	Do this in the right order and place
+
+		libusb_release_interface( devh, 0 );
+
 
 		libusb_close( devh );
 		devh = NULL;
@@ -1958,14 +1965,14 @@ int rtlsdr::rtlsdr_close( void )
 
 		int index;
 		{
-			CMutexLock cml( dongle_mutex );
+			CMutexLock cml( rtlsdr_mutex );
 			index = GetDongleIndexFromDongle( m_dongle );
 		}
 
 		if ( index >= 0 )
 		{
 			Dongles[ index ].busy = false;
-			CMutexLock cml( registry_mutex );
+			CMutexLock cml( rtlsdr_mutex );
 			WriteSingleRegistry( index );
 			m_dongle.Clear();
 		}
@@ -2608,7 +2615,7 @@ unsigned __int64 rtlsdr::srtlsdr_get_version_int64( void )
 		BYTE *vinfo = new BYTE[ size ];
 		if ( vinfo != NULL )
 		{
-			memset( vinfo, 0, sizeof( vinfo ));
+			memset( vinfo, 0, size );	//	fixed sizeof a pointer != sizeof obhect
 			if ( ::GetFileVersionInfo( work, NULL, size, vinfo ) != 0 )
 			{
 				VS_FIXEDFILEINFO *ffinfo;

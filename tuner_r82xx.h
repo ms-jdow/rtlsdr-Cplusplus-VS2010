@@ -42,6 +42,8 @@
 
 #define VER_NUM				49
 
+#define	REAL_MAX_GAIN_TABLE_SIZE	32
+
 enum r82xx_chip
 {
 	CHIP_R820T,
@@ -242,6 +244,8 @@ protected:	//	private variables
 
 	const tFilterInfo*	m_FilterInfo;
 	int					m_FilterSetCount;
+	int					r82xx_gain_table_len;
+	int					r82xx_gain_table[ REAL_MAX_GAIN_TABLE_SIZE ];
 
 protected:
 	//	Static data

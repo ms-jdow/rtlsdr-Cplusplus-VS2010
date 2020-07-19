@@ -318,7 +318,7 @@ static const struct gain_index_table
 	uint8_t lna_gain_index[ SIZE_GAIN_TABLE ];
 	uint8_t mix_gain_index[ SIZE_GAIN_TABLE ];
 	uint8_t vga_gain_index[ SIZE_GAIN_TABLE ];
-} r82xx_gain_index_table[2] =
+} r82xx_gain_index_table[ 2 ] =
 {
 	{ // optimized for linearity
 		{ 15,15,13,13,12,10, 9, 9, 8, 7, 7, 6, 6, 6, 6, 5, 5, 4, 3, 3, 2, 1 }, // LNA
@@ -377,8 +377,8 @@ static int32_t IF_stage[ ARRAY_SIZE( r82xx_vga_gain_steps )];
 	( sizeof( r82xx_lna_gain_steps ) / sizeof( r82xx_lna_gain_steps[ 0 ] ) +\
 	  sizeof( r82xx_mixer_gain_steps ) / sizeof( r82xx_mixer_gain_steps[ 0 ] )\
 	)
-static int r82xx_gain_table_len;
-static int r82xx_gain_table[ MAX_GAIN_TABLE_SIZE ];
+//static int r82xx_gain_table_len;
+//static int r82xx_gain_table[ MAX_GAIN_TABLE_SIZE ];
 
 const CString r82xxTuner::BandwidthSetNames[] =
 {
@@ -437,6 +437,7 @@ r82xxTuner::r82xxTuner( rtlsdr* base, enum rtlsdr_tuner type )
 	r82xx_compute_gain_table();
 
 	r82xx_SetBWValues( BWSNdefault );
+	ASSERT( MAX_GAIN_TABLE_SIZE == REAL_MAX_GAIN_TABLE_SIZE );
 }
 
 

@@ -144,5 +144,6 @@ protected:	//	Basic variables.
 	unsigned int						xfer_errors;
 	int									dev_lost;
 
-	static	CMyMutex					registry_mutex;
-	static	CMyMutex					dongle_mutex;
+//	static	CMyMutex					registry_mutex;	//	Protect registry accesses
+//	static	CMyMutex					dongle_mutex;	//	Protect shared memory accesses
+	static	CMyMutex					rtlsdr_mutex;	//	Protect shared memory accesses

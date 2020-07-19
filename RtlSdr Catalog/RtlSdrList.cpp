@@ -7,7 +7,10 @@ SharedMemoryFile	SharedDongleData;
 RtlSdrAreaDef*		RtlSdrArea = NULL;
 Dongle*				Dongles = NULL;
 
-CMyMutex			RtlSdrList::registry_mutex( _T( "RtlSdr++ Mutex" ));
+//CMyMutex			RtlSdrList::registry_mutex( _T( "RtlSdr++ Registry Mutex" ));
+//CMyMutex			RtlSdrList::dongle_mutex( _T( "RtlSdr++ Dongle Mutex" ));
+CMyMutex			RtlSdrList::rtlsdr_mutex( _T( "RtlSdr++ Mutex" ));
+
 
 #define CATALOG_TIMEOUT		5		//	Not much changes in 5 seconds with dongles.
 #define STR_OFFSET			9		// EEPROM string offset.
@@ -103,6 +106,7 @@ bool RtlSdrList::GetStrings( int index
 						   , CString& ser
 						   )
 {
+	CMutexLock cml( rtlsdr_mutex );
 	if ( (ULONG) index >= RtlSdrArea->activeEntries )
 		return false;
 	//	Automatic conversion takes place.
@@ -146,7 +150,7 @@ void RtlSdrList::ReadRegistry( void )
 	DWORD   resVal;
 	HKEY    hRtlsdrKey	= NULL;
 
-	CMutexLock cml( registry_mutex );
+	CMutexLock cml( rtlsdr_mutex );
 
 	// Just to be sure - clear everthing here
 
@@ -168,6 +172,7 @@ void RtlSdrList::ReadRegistry( void )
 		DWORD debugfile = true;
 		// So now we read values we need.
 		CString name;
+		CMutexLock cml( rtlsdr_mutex );
 		memset( Dongles, 0, sizeof( Dongle ) * MAX_DONGLES );
 		RtlSdrArea->activeEntries = 0;
 		for ( INT_PTR i = 0; ; i++ )
@@ -230,7 +235,7 @@ void RtlSdrList::ReadRegistry( void )
 //	in the DongleArray "Add()" function.)
 void RtlSdrList::WriteRegistry( void )
 {
-	CMutexLock cml( registry_mutex );
+	CMutexLock cml( rtlsdr_mutex );
 	DWORD   resVal;
 	HKEY    hRtlsdrKey	= NULL;
 	DWORD	status = 0;
@@ -284,6 +289,7 @@ void RtlSdrList::WriteRegistry( void )
 		DWORD Size = sizeof( DWORD );
 		DWORD debugfile = true;
 		// So now we read values we need.
+		CMutexLock cml( rtlsdr_mutex );
 		for ( DWORD i = 0; i < RtlSdrArea->activeEntries; i++ )
 		{
 			name.Format( _T( "Dongle%d" ), i );
@@ -308,7 +314,7 @@ void RtlSdrList::WriteRegistry( void )
 //	STATIC //
 uint32_t RtlSdrList::WriteSingleRegistry( int index )
 {
-	CMutexLock cml( registry_mutex );
+//	CMutexLock cml( rtlsdr_mutex );
 	DWORD   resVal;
 	HKEY    hRtlsdrKey	= NULL;
 	DWORD	status;
@@ -826,6 +832,7 @@ void RtlSdrList::reinitDongles( void )
 		libusb_exit( tctx );
 		//	Now merge this data into our database.
 		int dbindex = -1;
+		CMutexLock cml( rtlsdr_mutex );
 		while( reinit_dongles.GetSize() > 0 )
 		{
 			if ( reinit_dongles.GetSize() == 1 )
@@ -886,6 +893,8 @@ void RtlSdrList::reinitDongles( void )
 		}
 	}
 #endif	//	This way SORT OF works.
+	else
+		libusb_exit( tctx );
 	return;
 }
 
@@ -1110,10 +1119,8 @@ int RtlSdrList::rtlsdr_close( void )
 		libusb_close( devh );
 		devh = NULL;
 
-		int index;
-		{
-			index = GetDongleIndexFromDongle( m_dongle );
-		}
+		CMutexLock cml( rtlsdr_mutex );
+		int index = GetDongleIndexFromDongle( m_dongle );
 
 		if ( index >= 0 )
 		{
@@ -1507,6 +1514,7 @@ int RtlSdrList::GetDongleIndexFromDongle( const Dongle dongle )
 
 void RtlSdrList::mergeToMaster( Dongle& tempd )
 {
+	CMutexLock cml( rtlsdr_mutex );
 	for ( DWORD mast = 0; mast < RtlSdrArea->activeEntries; mast++ )
 	{
 		Dongle* md = &Dongles[ mast ];
@@ -1730,6 +1738,7 @@ int	RtlSdrList::srtlsdr_eep_img_from_Dongle( eepromdata&	dat
 
 bool RtlSdrList::IsBusy( DWORD index )
 {
+	CMutexLock cml( rtlsdr_mutex );
 	if ( index < RtlSdrArea->activeEntries )
 		return Dongles[ index ].busy;
 	else
@@ -1739,6 +1748,7 @@ bool RtlSdrList::IsBusy( DWORD index )
 
 bool RtlSdrList::IsFound( DWORD index )
 {
+	CMutexLock cml( rtlsdr_mutex );
 	if ( index < RtlSdrArea->activeEntries )
 		return Dongles[ index ].found >= 0;
 	else
@@ -1748,6 +1758,7 @@ bool RtlSdrList::IsFound( DWORD index )
 
 void RtlSdrList::RemoveDongle( int index )
 {
+	CMutexLock cml( rtlsdr_mutex );
 	//	Dongles array - move entry + 1 to entry, until entry is empty.
 	int workindex = index;
 	Dongle* dongle = &Dongles[ workindex ];
@@ -1792,6 +1803,7 @@ int RtlSdrList::FindInMasterDB( Dongle* dng, bool exact )
 
 int RtlSdrList::FindGuessInMasterDB( Dongle* dng )
 {
+	CMutexLock cml( rtlsdr_mutex );
 	for( int i = 0; i < (int) RtlSdrArea->activeEntries; i++ )
 	{
 		Dongle *test = &Dongles[ i ];

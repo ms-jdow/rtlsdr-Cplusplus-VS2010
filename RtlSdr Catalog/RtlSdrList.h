@@ -161,6 +161,8 @@ protected:
 
 //	static RtlSdrAreaDef*		RtlSdrArea;
 //	static Dongle*				Dongles;
-	static CMyMutex				registry_mutex;
+//	static CMyMutex				registry_mutex;
+//	static CMyMutex				dongle_mutex;
+	static CMyMutex				rtlsdr_mutex;
 };
 

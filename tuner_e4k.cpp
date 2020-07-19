@@ -155,6 +155,7 @@ static const gaintable gain_table_mode_sensitivity[] =
 };
 #endif		//	defined( CORRECT_FOR_DEFAULT_IFGAIN )
 
+//	Safe - it's written with the same data every time, gais from gain_table_mode_linearity
 static int tuner_gain_table_linearity[ ARRAY_SIZE( gain_table_mode_linearity )];
 static int tuner_gain_table_sensitivity[ ARRAY_SIZE( gain_table_mode_sensitivity )];
 

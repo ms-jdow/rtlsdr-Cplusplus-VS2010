@@ -201,12 +201,11 @@ public:
 											, CString& serial
 											);
 	STATIC int	srtlsdr_get_index_by_serial	( const char *serial );
+protected:
 	STATIC int	rtlsdr_static_get_tuner_type( int index );
 	STATIC int	srtlsdr_eep_img_from_Dongle	( eepromdata&	dat
 											, Dongle*		regentry
 											);
-
-protected:
 	STATIC void	GetCatalog					( void );
 	STATIC bool	reinitDongles				( void );
 	STATIC bool TestMaster					( void );
@@ -248,7 +247,7 @@ private:
 	int										spectrum_inversion;
 	int										active_index;
 
-	static int								inReinitDongles;
+	static int								inReinitDongles;	// conditions some fprintfs
 
 private:
 	static CStringA							RtlSdrVersionString;
